@@ -10,14 +10,6 @@ main = Blueprint("main", __name__)
 
 
 ALLOWED_EXTENSIONS = {"pdf", "txt", "docx", "html", "htm", "xml"}
-MIME_TYPES = {
-    "pdf": "application/pdf",
-    "txt": "text/plain",
-    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "html": "text/html",
-    "htm": "text/html",
-    "xml": "application/xml",
-}
 
 
 def get_file_extension(filename):
@@ -29,7 +21,6 @@ def allowed_file(filename):
 
 
 def extract_text_from_file(filepath, file_type):
-    """Extract text content from various file types."""
     try:
         if file_type == "pdf":
             import fitz
@@ -39,35 +30,29 @@ def extract_text_from_file(filepath, file_type):
                 text += page.get_text()
             doc.close()
             return text
-
         elif file_type == "txt":
             with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
                 return f.read()
-
         elif file_type == "docx":
             from docx import Document
             doc = Document(filepath)
             return "\n".join([para.text for para in doc.paragraphs])
-
         elif file_type in ("html", "htm"):
             from bs4 import BeautifulSoup
             with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
                 soup = BeautifulSoup(f.read(), "html.parser")
                 return soup.get_text(separator="\n", strip=True)
-
         elif file_type == "xml":
             from bs4 import BeautifulSoup
             with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
                 soup = BeautifulSoup(f.read(), "xml")
                 return soup.get_text(separator="\n", strip=True)
-
-    except Exception as e:
-        return f"Error reading file: {str(e)}"
+    except Exception:
+        return ""
     return ""
 
 
 def count_pages_or_lines(filepath, file_type):
-    """Count pages for PDF, lines for other files."""
     try:
         if file_type == "pdf":
             import fitz
@@ -111,9 +96,9 @@ def home():
     return render_template("home.html", books=books, search=search)
 
 
-@main.route("/book/<int:book_id>")
-def view_book(book_id):
-    book = Book.query.get_or_404(book_id)
+@main.route("/book/<string:hash_id>")
+def view_book(hash_id):
+    book = Book.query.filter_by(hash_id=hash_id).first_or_404()
 
     if book.visibility == "private" and (
         not current_user.is_authenticated or current_user.id != book.uploader_id
@@ -142,29 +127,25 @@ def view_book_shared(token):
     return render_template("book_view.html", book=book, bookmark=bookmark)
 
 
-@main.route("/book/<int:book_id>/download")
+@main.route("/book/<string:hash_id>/download")
 @login_required
-def download_book(book_id):
-    book = Book.query.get_or_404(book_id)
+def download_book(hash_id):
+    book = Book.query.filter_by(hash_id=hash_id).first_or_404()
     if book.visibility == "private" and current_user.id != book.uploader_id:
         abort(403)
-    file_path = os.path.join(
-        current_app.config["UPLOAD_FOLDER_BOOKS"], book.filename
-    )
+    file_path = os.path.join(current_app.config["UPLOAD_FOLDER_BOOKS"], book.filename)
     ext = get_file_extension(book.filename)
     return send_file(file_path, as_attachment=True, download_name=f"{book.title}.{ext}")
 
 
-@main.route("/book/<int:book_id>/download-audio")
+@main.route("/book/<string:hash_id>/download-audio")
 @login_required
-def download_audio(book_id):
-    book = Book.query.get_or_404(book_id)
+def download_audio(hash_id):
+    book = Book.query.filter_by(hash_id=hash_id).first_or_404()
     if not book.audio_filename:
         flash("Audio not available yet.", "warning")
-        return redirect(url_for("main.view_book", book_id=book_id))
-    audio_path = os.path.join(
-        current_app.config["UPLOAD_FOLDER_AUDIO"], book.audio_filename
-    )
+        return redirect(url_for("main.view_book", hash_id=hash_id))
+    audio_path = os.path.join(current_app.config["UPLOAD_FOLDER_AUDIO"], book.audio_filename)
     return send_file(audio_path, as_attachment=True, download_name=f"{book.title}.mp3")
 
 
@@ -236,16 +217,31 @@ def upload_book():
         db.session.add(book)
         db.session.commit()
 
+        try:
+            from gtts import gTTS
+            full_text = extract_text_from_file(file_path, ext)
+            if full_text and full_text.strip():
+                if len(full_text) > 50000:
+                    full_text = full_text[:50000]
+                tts = gTTS(text=full_text, lang="en", slow=False)
+                audio_filename = f"{book.id}_en.mp3"
+                audio_path = os.path.join(current_app.config["UPLOAD_FOLDER_AUDIO"], audio_filename)
+                tts.save(audio_path)
+                book.audio_filename = audio_filename
+                db.session.commit()
+        except Exception:
+            pass
+
         flash("Book uploaded successfully!", "success")
-        return redirect(url_for("main.view_book", book_id=book.id))
+        return redirect(url_for("main.view_book", hash_id=book.hash_id))
 
     return render_template("upload.html")
 
 
-@main.route("/book/<int:book_id>/delete", methods=["POST"])
+@main.route("/book/<string:hash_id>/delete", methods=["POST"])
 @login_required
-def delete_book(book_id):
-    book = Book.query.get_or_404(book_id)
+def delete_book(hash_id):
+    book = Book.query.filter_by(hash_id=hash_id).first_or_404()
     if book.uploader_id != current_user.id and not current_user.is_admin:
         abort(403)
 

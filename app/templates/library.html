@@ -10,7 +10,7 @@
         <div class="card h-100 book-card">
             <div class="card-body">
                 <h5 class="card-title">
-                    <a href="{{ url_for('main.view_book', book_id=book.id) }}" class="text-decoration-none text-dark">{{ book.title }}</a>
+                    <a href="{{ url_for('main.view_book', hash_id=book.hash_id) }}" class="text-decoration-none text-dark">{{ book.title }}</a>
                     <span class="badge bg-secondary" style="font-size:0.6em;">{{ book.file_type|upper }}</span>
                 </h5>
                 <p class="card-text text-muted small">{{ book.description[:100] }}{% if book.description|length > 100 %}...{% endif %}</p>

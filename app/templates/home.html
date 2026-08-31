@@ -18,7 +18,7 @@
                     <i class="bi bi-book text-primary fs-1 me-3"></i>
                     <div class="flex-grow-1">
                         <h5 class="card-title mb-1">
-                            <a href="{{ url_for('main.view_book', book_id=book.id) }}" class="text-decoration-none text-dark stretched-link">{{ book.title }}</a>
+                            <a href="{{ url_for('main.view_book', hash_id=book.hash_id) }}" class="text-decoration-none text-dark stretched-link">{{ book.title }}</a>
                             <span class="badge bg-secondary" style="font-size:0.6em;">{{ book.file_type|upper }}</span>
                         </h5>
                         <small class="text-muted">by {{ book.uploader.username }}</small>

@@ -22,7 +22,7 @@
             </div>
             <div>
                 {% if current_user.is_authenticated and current_user.id == book.uploader_id %}
-                <form method="POST" action="{{ url_for('main.delete_book', book_id=book.id) }}" onsubmit="return confirm('Delete this book?');" class="d-inline">
+                <form method="POST" action="{{ url_for('main.delete_book', hash_id=book.hash_id) }}" onsubmit="return confirm('Delete this book?');" class="d-inline">
                     <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
                 </form>
                 {% endif %}
@@ -102,10 +102,10 @@
         <div class="audio-player mb-3">
             <h6><i class="bi bi-headphones text-primary"></i> Audio</h6>
             {% if book.audio_filename %}
-            <audio id="audio-player" controls class="w-100 mb-2" data-book-id="{{ book.id }}">
+            <audio id="audio-player" controls class="w-100 mb-2" data-book-id="{{ book.hash_id }}">
                 <source src="/media/audio/{{ book.audio_filename }}" type="audio/mpeg">
             </audio>
-            <a href="{{ url_for('main.download_audio', book_id=book.id) }}" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-download"></i> Download MP3</a>
+            <a href="{{ url_for('main.download_audio', hash_id=book.hash_id) }}" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-download"></i> Download MP3</a>
             {% else %}
             <p class="text-muted small">Audio not converted yet.</p>
             {% if current_user.is_authenticated %}
@@ -137,10 +137,10 @@
             {% elif book.visibility == 'public' %}
             <div class="input-group input-group-sm mb-2">
                 <input type="text" class="form-control" id="share-url"
-                       value="{{ request.host_url }}book/{{ book.id }}" readonly>
+                       value="{{ request.host_url }}book/{{ book.hash_id }}" readonly>
                 <button class="btn btn-outline-primary" onclick="copyShareUrl()"><i class="bi bi-clipboard"></i></button>
             </div>
-            <a href="https://wa.me/?text={{ book.title }}%20-%20{{ request.host_url }}book/{{ book.id }}"
+            <a href="https://wa.me/?text={{ book.title }}%20-%20{{ request.host_url }}book/{{ book.hash_id }}"
                class="btn btn-outline-success btn-sm w-100" target="_blank">
                 <i class="bi bi-whatsapp"></i> Share on WhatsApp
             </a>
@@ -152,7 +152,7 @@
         <!-- Download -->
         <div class="share-section">
             <h6><i class="bi bi-download text-primary"></i> Download</h6>
-            <a href="{{ url_for('main.download_book', book_id=book.id) }}" class="btn btn-outline-primary btn-sm w-100">
+            <a href="{{ url_for('main.download_book', hash_id=book.hash_id) }}" class="btn btn-outline-primary btn-sm w-100">
                 <i class="bi bi-file-earmark"></i> Download {{ book.file_type|upper }}
             </a>
         </div>
@@ -171,11 +171,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 {% endif %}
 <script>
-const BOOK_ID = {{ book.id }};
+const BOOK_HASH = "{{ book.hash_id }}";
 const FILE_TYPE = "{{ book.file_type }}";
 const START_PAGE = {{ bookmark.page_number if bookmark else 1 }};
 const START_AUDIO_POS = {{ bookmark.audio_position if bookmark else 0 }};
-const TOTAL_PAGES = {{ book.page_count }};
 
 let currentPage = START_PAGE;
 const totalPagesEl = document.getElementById('total-pages');
@@ -183,7 +182,7 @@ const currentPageEl = document.getElementById('current-page');
 let bookmarkTimer = null;
 
 {% if book.file_type == 'pdf' %}
-const PDF_URL = "{{ url_for('main.download_book', book_id=book.id) }}";
+const PDF_URL = "{{ url_for('main.download_book', hash_id=book.hash_id) }}";
 let pdfDoc = null;
 const canvas = document.getElementById('pdf-canvas');
 const ctx = canvas.getContext('2d');
@@ -227,7 +226,7 @@ let lines = [];
 
 async function loadText() {
     try {
-        const resp = await fetch(`/api/full-text/${BOOK_ID}`);
+        const resp = await fetch(`/api/full-text/${BOOK_HASH}`);
         const data = await resp.json();
         if (data.text) {
             fullText = data.text;
@@ -271,7 +270,7 @@ function saveBookmark() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                book_id: BOOK_ID,
+                book_hash: BOOK_HASH,
                 page_number: currentPage,
                 audio_position: document.getElementById('audio-player') ? document.getElementById('audio-player').currentTime : 0
             })
@@ -293,7 +292,7 @@ async function convertToAudio() {
     progress.classList.remove('d-none');
 
     try {
-        const resp = await fetch(`/api/convert-audio/${BOOK_ID}`, { method: 'POST', headers: {'Content-Type':'application/json'} });
+        const resp = await fetch(`/api/convert-audio/${BOOK_HASH}`, { method: 'POST', headers: {'Content-Type':'application/json'} });
         const data = await resp.json();
         if (data.status === 'ok') {
             location.reload();
@@ -317,7 +316,7 @@ async function extractAndTranslate() {
     const lang = document.getElementById('translate-lang').value;
 
     try {
-        const resp = await fetch(`/api/extract-text/${BOOK_ID}?page=${currentPage}`);
+        const resp = await fetch(`/api/extract-text/${BOOK_HASH}?page=${currentPage}`);
         const data = await resp.json();
         if (data.text) {
             const tResp = await fetch('/api/translate', {
@@ -357,7 +356,7 @@ async function listenTranslation() {
 }
 
 function shareCurrentPage() {
-    const url = window.location.origin + '/book/{{ book.id }}?page=' + currentPage;
+    const url = window.location.origin + '/book/{{ book.hash_id }}?page=' + currentPage;
     if (navigator.share) {
         navigator.share({ title: '{{ book.title }} - Page ' + currentPage, url });
     } else {
@@ -381,7 +380,7 @@ if (audioPlayer) {
             fetch('/api/bookmark', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ book_id: BOOK_ID, page_number: currentPage, audio_position: audioPlayer.currentTime })
+                body: JSON.stringify({ book_hash: BOOK_HASH, page_number: currentPage, audio_position: audioPlayer.currentTime })
             });
         }, 2000);
     });

@@ -25,7 +25,6 @@ def admin_required(f):
 @admin_bp.route("/")
 @admin_required
 def panel():
-    base = os.path.abspath(os.path.join(current_app.root_path, ".."))
     book_count_files = len([f for f in os.listdir(current_app.config["UPLOAD_FOLDER_BOOKS"]) if not f.startswith(".")]) if os.path.exists(current_app.config["UPLOAD_FOLDER_BOOKS"]) else 0
     audio_count = len([f for f in os.listdir(current_app.config["UPLOAD_FOLDER_AUDIO"]) if f.endswith(".mp3")]) if os.path.exists(current_app.config["UPLOAD_FOLDER_AUDIO"]) else 0
     from app.models import User
@@ -60,6 +59,7 @@ def file_manager():
                 "is_dir": os.path.isdir(full),
                 "size": os.path.getsize(full) if os.path.isfile(full) else 0,
                 "path": os.path.relpath(full, base),
+                "is_text": os.path.isfile(full) and name.endswith((".txt", ".html", ".htm", ".xml", ".py", ".js", ".css", ".json", ".md", ".csv", ".log", ".cfg", ".ini", ".yml", ".yaml", ".env")),
             })
 
     return render_template(
@@ -88,6 +88,42 @@ def upload_file():
         flash(f"Uploaded {filename}", "success")
 
     return redirect(url_for("admin.file_manager", path=rel_path))
+
+
+@admin_bp.route("/files/edit", methods=["GET", "POST"])
+@admin_required
+def edit_file():
+    filepath = request.args.get("path", "") or request.form.get("path", "")
+    base = os.path.abspath(os.path.join(current_app.root_path, ".."))
+    full = os.path.normpath(os.path.join(base, filepath))
+
+    if not full.startswith(base):
+        flash("Access denied.", "danger")
+        return redirect(url_for("admin.file_manager"))
+
+    if request.method == "POST":
+        content = request.form.get("content", "")
+        try:
+            with open(full, "w", encoding="utf-8") as f:
+                f.write(content)
+            flash(f"Saved {os.path.basename(full)}", "success")
+        except Exception as e:
+            flash(f"Error saving: {str(e)}", "danger")
+        return redirect(url_for("admin.file_manager", path=os.path.dirname(filepath)))
+
+    try:
+        with open(full, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+    except Exception as e:
+        flash(f"Error reading: {str(e)}", "danger")
+        return redirect(url_for("admin.file_manager"))
+
+    return render_template(
+        "admin/edit_file.html",
+        filepath=filepath,
+        filename=os.path.basename(full),
+        content=content,
+    )
 
 
 @admin_bp.route("/files/download/<path:filepath>")

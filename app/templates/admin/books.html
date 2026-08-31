@@ -10,12 +10,12 @@
     <table class="table table-hover">
         <thead>
             <tr>
-                <th>#</th>
+                <th>Hash ID</th>
                 <th>Title</th>
                 <th>Type</th>
                 <th>Uploader</th>
                 <th>Visibility</th>
-                <th>Pages/Lines</th>
+                <th>Pages</th>
                 <th>Audio</th>
                 <th>Date</th>
                 <th>Actions</th>
@@ -24,8 +24,8 @@
         <tbody>
             {% for book in books %}
             <tr>
-                <td>{{ book.id }}</td>
-                <td><a href="{{ url_for('main.view_book', book_id=book.id) }}" class="text-primary">{{ book.title }}</a></td>
+                <td><code>{{ book.hash_id }}</code></td>
+                <td><a href="{{ url_for('main.view_book', hash_id=book.hash_id) }}" class="text-primary">{{ book.title }}</a></td>
                 <td><span class="badge bg-secondary">{{ book.file_type|upper }}</span></td>
                 <td>{{ book.uploader.username }}</td>
                 <td>
@@ -37,7 +37,7 @@
                 <td>{% if book.audio_filename %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-muted"></i>{% endif %}</td>
                 <td>{{ book.created_at.strftime('%Y-%m-%d') }}</td>
                 <td>
-                    <form method="POST" action="{{ url_for('main.delete_book', book_id=book.id) }}" class="d-inline" onsubmit="return confirm('Delete?');">
+                    <form method="POST" action="{{ url_for('main.delete_book', hash_id=book.hash_id) }}" class="d-inline" onsubmit="return confirm('Delete?');">
                         <button type="submit" class="btn btn-outline-danger btn-sm py-0"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>

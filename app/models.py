@@ -2,6 +2,8 @@ from datetime import datetime
 from app import db, login_manager
 from flask_login import UserMixin
 import bcrypt
+import hashlib
+import secrets
 
 
 @login_manager.user_loader
@@ -39,13 +41,13 @@ class Book(db.Model):
     __tablename__ = "books"
 
     id = db.Column(db.Integer, primary_key=True)
+    hash_id = db.Column(db.String(11), unique=True, nullable=False, index=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, default="")
     filename = db.Column(db.String(256), nullable=False)
-    file_type = db.Column(db.String(10), default="pdf")  # pdf, txt, docx, html, xml
+    file_type = db.Column(db.String(10), default="pdf")
     audio_filename = db.Column(db.String(256), default="")
-    cover_image = db.Column(db.String(256), default="")
-    visibility = db.Column(db.String(20), default="public")  # public, private, share
+    visibility = db.Column(db.String(20), default="public")
     share_token = db.Column(db.String(64), unique=True, nullable=True)
     uploader_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     page_count = db.Column(db.Integer, default=0)
@@ -55,6 +57,18 @@ class Book(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     bookmarks = db.relationship("Bookmark", backref="book", lazy=True)
+
+    @staticmethod
+    def generate_hash_id():
+        while True:
+            hid = secrets.token_urlsafe(9)[:11]
+            if not Book.query.filter_by(hash_id=hid).first():
+                return hid
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if not self.hash_id:
+            self.hash_id = self.generate_hash_id()
 
 
 class Bookmark(db.Model):

@@ -6,7 +6,7 @@
 {% if bookmarks %}
 <div class="list-group">
     {% for bookmark, book in bookmarks %}
-    <a href="{{ url_for('main.view_book', book_id=book.id) }}?page={{ bookmark.page_number }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+    <a href="{{ url_for('main.view_book', hash_id=book.hash_id) }}?page={{ bookmark.page_number }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
         <div>
             <h6 class="mb-1">{{ book.title }}</h6>
             <small class="text-muted">Page {{ bookmark.page_number }} | Last visited: {{ bookmark.updated_at.strftime('%b %d, %Y %H:%M') }}</small>

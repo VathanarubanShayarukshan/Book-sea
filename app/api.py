@@ -43,7 +43,7 @@ def extract_text_from_file(filepath, file_type):
             with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
                 soup = BeautifulSoup(f.read(), "xml")
                 return soup.get_text(separator="\n", strip=True)
-    except Exception as e:
+    except Exception:
         return ""
     return ""
 
@@ -52,12 +52,16 @@ def extract_text_from_file(filepath, file_type):
 @login_required
 def save_bookmark():
     data = request.get_json()
-    book_id = data.get("book_id")
+    book_hash = data.get("book_hash")
     page_number = data.get("page_number", 1)
     audio_position = data.get("audio_position", 0.0)
 
+    book = Book.query.filter_by(hash_id=book_hash).first()
+    if not book:
+        return jsonify({"error": "Book not found"}), 404
+
     bookmark = Bookmark.query.filter_by(
-        user_id=current_user.id, book_id=book_id
+        user_id=current_user.id, book_id=book.id
     ).first()
 
     if bookmark:
@@ -66,7 +70,7 @@ def save_bookmark():
     else:
         bookmark = Bookmark(
             user_id=current_user.id,
-            book_id=book_id,
+            book_id=book.id,
             page_number=page_number,
             audio_position=audio_position,
         )
@@ -76,11 +80,15 @@ def save_bookmark():
     return jsonify({"status": "ok"})
 
 
-@api_bp.route("/bookmark/<int:book_id>", methods=["GET"])
+@api_bp.route("/bookmark/<string:book_hash>", methods=["GET"])
 @login_required
-def get_bookmark(book_id):
+def get_bookmark(book_hash):
+    book = Book.query.filter_by(hash_id=book_hash).first()
+    if not book:
+        return jsonify({"error": "Book not found"}), 404
+
     bookmark = Bookmark.query.filter_by(
-        user_id=current_user.id, book_id=book_id
+        user_id=current_user.id, book_id=book.id
     ).first()
     if bookmark:
         return jsonify({
@@ -90,9 +98,9 @@ def get_bookmark(book_id):
     return jsonify({"page_number": 1, "audio_position": 0.0})
 
 
-@api_bp.route("/convert-audio/<int:book_id>", methods=["POST"])
-def convert_to_audio(book_id):
-    book = Book.query.get_or_404(book_id)
+@api_bp.route("/convert-audio/<string:book_hash>", methods=["POST"])
+def convert_to_audio(book_hash):
+    book = Book.query.filter_by(hash_id=book_hash).first_or_404()
 
     if book.visibility == "private":
         if not current_user.is_authenticated or current_user.id != book.uploader_id:
@@ -128,9 +136,9 @@ def convert_to_audio(book_id):
         return jsonify({"error": str(e)}), 500
 
 
-@api_bp.route("/extract-text/<int:book_id>", methods=["GET"])
-def extract_text(book_id):
-    book = Book.query.get_or_404(book_id)
+@api_bp.route("/extract-text/<string:book_hash>", methods=["GET"])
+def extract_text(book_hash):
+    book = Book.query.filter_by(hash_id=book_hash).first_or_404()
 
     if book.visibility == "private":
         if not current_user.is_authenticated or current_user.id != book.uploader_id:
@@ -163,9 +171,9 @@ def extract_text(book_id):
         return jsonify({"error": str(e)}), 500
 
 
-@api_bp.route("/full-text/<int:book_id>", methods=["GET"])
-def get_full_text(book_id):
-    book = Book.query.get_or_404(book_id)
+@api_bp.route("/full-text/<string:book_hash>", methods=["GET"])
+def get_full_text(book_hash):
+    book = Book.query.filter_by(hash_id=book_hash).first_or_404()
 
     if book.visibility == "private":
         if not current_user.is_authenticated or current_user.id != book.uploader_id:
@@ -193,6 +201,8 @@ def translate_text():
         return jsonify({"error": "No text provided"}), 400
 
     try:
+        if len(text) > 5000:
+            text = text[:5000]
         translated = GoogleTranslator(source="auto", target=target_lang).translate(text)
         return jsonify({"translated": translated, "target": target_lang})
     except Exception as e:

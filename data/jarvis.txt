@@ -30,4 +30,7 @@ users are upload so this fasility is must want.
 ===================
 
 html file is coverted to text but i want the any book formate the book tyle want maintained and admin can edit
-the  file too.
+the  file too. and book want coverted audio when pload automaticly please check it when bulding your sellf. 
+and translation is bad and singin with google is not suporting but google so cheack it.donot use numbeers for book
+make id like yt serach bar is good. but ui is only 45% ok. affter you buld the app then cheack fulll web functions 
+and push into github.show progress bar for upload book and convert to audio. ok do your work.
