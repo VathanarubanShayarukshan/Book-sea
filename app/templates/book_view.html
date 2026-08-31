@@ -2,13 +2,10 @@
 {% block title %}{{ book.title }} - BookSea{% endblock %}
 {% block extra_css %}
 <style>
-    .reader-container { background: #1a1a2e; min-height: 500px; border-radius: 8px; overflow: hidden; }
-    #pdf-container { display: flex; align-items: center; justify-content: center; min-height: 400px; }
+    #pdf-container { display: flex; align-items: center; justify-content: center; min-height: 400px; background: #f1f5f9; border-radius: 8px; }
     #pdf-container canvas { max-width: 100%; }
-    #text-container { padding: 20px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6; }
+    #text-container { padding: 20px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6; background: #f8fafc; border-radius: 8px; color: #1e293b; }
     .page-controls { display: flex; align-items: center; gap: 10px; }
-    .audio-player { background: #16213e; border-radius: 8px; padding: 15px; }
-    .share-section { background: #16213e; border-radius: 8px; padding: 15px; }
     .bookmark-toast { position: fixed; bottom: 20px; right: 20px; z-index: 9999; }
     .file-type-badge { font-size: 0.7em; vertical-align: middle; }
 </style>
@@ -19,7 +16,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <h3 class="mb-1">{{ book.title }}
-                    <span class="badge bg-info file-type-badge">{{ book.file_type|upper }}</span>
+                    <span class="badge bg-primary file-type-badge">{{ book.file_type|upper }}</span>
                 </h3>
                 <small class="text-muted">by {{ book.uploader.username }} | {{ book.page_count }} {% if book.file_type == 'pdf' %}pages{% else %}lines{% endif %} | {{ book.created_at.strftime('%b %d, %Y') }}</small>
             </div>
@@ -36,17 +33,17 @@
         <p class="text-muted mb-3">{{ book.description }}</p>
         {% endif %}
 
-        <div class="card bg-dark border-secondary mb-3">
+        <div class="card mb-3">
             <div class="card-body p-2">
                 {% if book.file_type == 'pdf' %}
                 <div id="pdf-container" class="text-center">
                     <canvas id="pdf-canvas"></canvas>
                 </div>
                 {% else %}
-                <div id="text-container" class="text-light">Loading...</div>
+                <div id="text-container">Loading...</div>
                 {% endif %}
             </div>
-            <div class="card-footer bg-transparent border-secondary">
+            <div class="card-footer bg-transparent">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="page-controls">
                         {% if book.file_type == 'pdf' %}
@@ -60,22 +57,22 @@
                         {% endif %}
                     </div>
                     <div>
-                        <button class="btn btn-outline-info btn-sm" onclick="extractAndTranslate()" title="Translate this section"><i class="bi bi-translate"></i> Translate</button>
-                        <button class="btn btn-outline-warning btn-sm" onclick="shareCurrentPage()" title="Share this page"><i class="bi bi-share"></i></button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="extractAndTranslate()" title="Translate"><i class="bi bi-translate"></i> Translate</button>
+                        <button class="btn btn-outline-warning btn-sm" onclick="shareCurrentPage()" title="Share"><i class="bi bi-share"></i></button>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Translation Panel -->
-        <div id="translate-panel" class="card bg-dark border-secondary mb-3 d-none">
-            <div class="card-header bg-transparent border-secondary d-flex justify-content-between">
+        <div id="translate-panel" class="card mb-3 d-none">
+            <div class="card-header bg-transparent d-flex justify-content-between">
                 <span><i class="bi bi-translate"></i> Translation</span>
-                <button class="btn-close btn-close-white" onclick="document.getElementById('translate-panel').classList.add('d-none')"></button>
+                <button class="btn-close" onclick="document.getElementById('translate-panel').classList.add('d-none')"></button>
             </div>
             <div class="card-body">
                 <div class="mb-2">
-                    <select id="translate-lang" class="form-select form-select-sm bg-dark text-white border-secondary">
+                    <select id="translate-lang" class="form-select form-select-sm">
                         <option value="en">English</option>
                         <option value="ta">Tamil</option>
                         <option value="hi">Hindi</option>
@@ -94,8 +91,8 @@
                         <option value="bn">Bengali</option>
                     </select>
                 </div>
-                <div id="translated-text" class="p-3 bg-dark rounded" style="min-height:60px;max-height:300px;overflow-y:auto;"></div>
-                <button class="btn btn-outline-info btn-sm mt-2" onclick="listenTranslation()"><i class="bi bi-volume-up"></i> Listen Translation</button>
+                <div id="translated-text" class="p-3 bg-light rounded" style="min-height:60px;max-height:300px;overflow-y:auto;"></div>
+                <button class="btn btn-outline-primary btn-sm mt-2" onclick="listenTranslation()"><i class="bi bi-volume-up"></i> Listen Translation</button>
             </div>
         </div>
     </div>
@@ -103,21 +100,21 @@
     <div class="col-lg-4">
         <!-- Audio Player -->
         <div class="audio-player mb-3">
-            <h6><i class="bi bi-headphones"></i> Audio</h6>
+            <h6><i class="bi bi-headphones text-primary"></i> Audio</h6>
             {% if book.audio_filename %}
             <audio id="audio-player" controls class="w-100 mb-2" data-book-id="{{ book.id }}">
                 <source src="/media/audio/{{ book.audio_filename }}" type="audio/mpeg">
             </audio>
-            <a href="{{ url_for('main.download_audio', book_id=book.id) }}" class="btn btn-outline-info btn-sm w-100"><i class="bi bi-download"></i> Download MP3</a>
+            <a href="{{ url_for('main.download_audio', book_id=book.id) }}" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-download"></i> Download MP3</a>
             {% else %}
             <p class="text-muted small">Audio not converted yet.</p>
             {% if current_user.is_authenticated %}
-            <button class="btn btn-info btn-sm w-100" id="convert-btn" onclick="convertToAudio()">
+            <button class="btn btn-primary btn-sm w-100" id="convert-btn" onclick="convertToAudio()">
                 <i class="bi bi-soundwave"></i> Convert to Audio
             </button>
             <div id="convert-progress" class="d-none mt-2">
                 <div class="progress">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width:100%">Converting...</div>
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%">Converting...</div>
                 </div>
             </div>
             {% endif %}
@@ -126,12 +123,12 @@
 
         <!-- Share Section -->
         <div class="share-section mb-3">
-            <h6><i class="bi bi-share"></i> Share</h6>
+            <h6><i class="bi bi-share text-primary"></i> Share</h6>
             {% if book.visibility == 'share' and book.share_token %}
             <div class="input-group input-group-sm mb-2">
-                <input type="text" class="form-control bg-dark text-white border-secondary" id="share-url"
+                <input type="text" class="form-control" id="share-url"
                        value="{{ request.host_url }}book/shared/{{ book.share_token }}" readonly>
-                <button class="btn btn-outline-info" onclick="copyShareUrl()"><i class="bi bi-clipboard"></i></button>
+                <button class="btn btn-outline-primary" onclick="copyShareUrl()"><i class="bi bi-clipboard"></i></button>
             </div>
             <a href="https://wa.me/?text={{ book.title }}%20-%20{{ request.host_url }}book/shared/{{ book.share_token }}"
                class="btn btn-outline-success btn-sm w-100" target="_blank">
@@ -139,9 +136,9 @@
             </a>
             {% elif book.visibility == 'public' %}
             <div class="input-group input-group-sm mb-2">
-                <input type="text" class="form-control bg-dark text-white border-secondary" id="share-url"
+                <input type="text" class="form-control" id="share-url"
                        value="{{ request.host_url }}book/{{ book.id }}" readonly>
-                <button class="btn btn-outline-info" onclick="copyShareUrl()"><i class="bi bi-clipboard"></i></button>
+                <button class="btn btn-outline-primary" onclick="copyShareUrl()"><i class="bi bi-clipboard"></i></button>
             </div>
             <a href="https://wa.me/?text={{ book.title }}%20-%20{{ request.host_url }}book/{{ book.id }}"
                class="btn btn-outline-success btn-sm w-100" target="_blank">
@@ -154,8 +151,8 @@
 
         <!-- Download -->
         <div class="share-section">
-            <h6><i class="bi bi-download"></i> Download</h6>
-            <a href="{{ url_for('main.download_book', book_id=book.id) }}" class="btn btn-outline-info btn-sm w-100">
+            <h6><i class="bi bi-download text-primary"></i> Download</h6>
+            <a href="{{ url_for('main.download_book', book_id=book.id) }}" class="btn btn-outline-primary btn-sm w-100">
                 <i class="bi bi-file-earmark"></i> Download {{ book.file_type|upper }}
             </a>
         </div>
@@ -163,7 +160,7 @@
 </div>
 
 <div class="bookmark-toast" id="bookmark-toast" style="display:none;">
-    <div class="toast show bg-info text-white">
+    <div class="toast show bg-primary text-white">
         <div class="toast-body"><i class="bi bi-bookmark-check"></i> Bookmark saved!</div>
     </div>
 </div>

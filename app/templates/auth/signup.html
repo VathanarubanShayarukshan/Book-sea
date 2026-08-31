@@ -3,16 +3,16 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-5">
-        <div class="card bg-dark border-secondary">
+        <div class="card shadow-sm">
             <div class="card-body p-4">
-                <h3 class="text-center mb-4"><i class="bi bi-person-plus"></i> Sign Up</h3>
+                <h3 class="text-center mb-4"><i class="bi bi-person-plus text-primary"></i> Sign Up</h3>
 
                 <a href="https://accounts.google.com/o/oauth2/v2/auth?client_id={{ config.GOOGLE_CLIENT_ID }}&redirect_uri={{ url_for('auth.google_callback', _external=True) }}&response_type=code&scope=openid%20email%20profile"
                    class="btn btn-outline-danger w-100 mb-3">
                     <i class="bi bi-google"></i> Sign up with Google
                 </a>
 
-                <div class="divider text-muted my-3"><span>or</span></div>
+                <div class="divider my-3"><span>or</span></div>
 
                 <form method="POST">
                     <div class="mb-3">
@@ -31,11 +31,11 @@
                         <label class="form-label">Confirm Password</label>
                         <input type="password" class="form-control" name="confirm_password" required placeholder="Repeat password">
                     </div>
-                    <button type="submit" class="btn btn-info w-100">Create Account</button>
+                    <button type="submit" class="btn btn-primary w-100">Create Account</button>
                 </form>
 
                 <p class="text-center mt-3 text-muted">
-                    Already have an account? <a href="{{ url_for('auth.login') }}" class="text-info">Login</a>
+                    Already have an account? <a href="{{ url_for('auth.login') }}" class="text-primary">Login</a>
                 </p>
             </div>
         </div>

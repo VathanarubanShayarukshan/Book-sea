@@ -25,3 +25,9 @@ please.ok do your work
 
 use uv for install dependencies.User can upload any book file type txt,docx,pdf,html,xml html and pdf are many 
 users are upload so this fasility is must want. 
+
+       pr3
+===================
+
+html file is coverted to text but i want the any book formate the book tyle want maintained and admin can edit
+the  file too.

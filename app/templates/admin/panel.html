@@ -1,33 +1,33 @@
 {% extends "base.html" %}
 {% block title %}Admin Panel - BookSea{% endblock %}
 {% block content %}
-<h2 class="mb-4"><i class="bi bi-gear"></i> Admin Panel</h2>
+<h2 class="mb-4"><i class="bi bi-gear text-warning"></i> Admin Panel</h2>
 
 <div class="row g-4 mb-4">
     <div class="col-md-3">
-        <div class="card bg-dark border-info text-center p-3">
-            <i class="bi bi-book text-info fs-1"></i>
+        <div class="card text-center p-3 border-primary">
+            <i class="bi bi-book text-primary fs-1"></i>
             <h3 class="mt-2">{{ book_count }}</h3>
             <small class="text-muted">Total Books</small>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-dark border-success text-center p-3">
+        <div class="card text-center p-3 border-success">
             <i class="bi bi-people text-success fs-1"></i>
             <h3 class="mt-2">{{ user_count }}</h3>
             <small class="text-muted">Users</small>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-dark border-warning text-center p-3">
-            <i class="bi bi-file-earmark-pdf text-warning fs-1"></i>
+        <div class="card text-center p-3 border-warning">
+            <i class="bi bi-file-earmark text-warning fs-1"></i>
             <h3 class="mt-2">{{ pdf_count }}</h3>
-            <small class="text-muted">PDF Files</small>
+            <small class="text-muted">Book Files</small>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card bg-dark border-primary text-center p-3">
-            <i class="bi bi-music-note-beamed text-primary fs-1"></i>
+        <div class="card text-center p-3 border-info">
+            <i class="bi bi-music-note-beamed text-info fs-1"></i>
             <h3 class="mt-2">{{ audio_count }}</h3>
             <small class="text-muted">Audio Files</small>
         </div>
@@ -36,28 +36,28 @@
 
 <div class="row g-4">
     <div class="col-md-4">
-        <a href="{{ url_for('admin.file_manager') }}" class="card bg-dark border-secondary text-decoration-none h-100">
+        <a href="{{ url_for('admin.file_manager') }}" class="card text-decoration-none h-100 border-primary">
             <div class="card-body text-center p-4">
-                <i class="bi bi-folder2-open text-info" style="font-size:3rem;"></i>
-                <h5 class="mt-3 text-white">File Manager</h5>
+                <i class="bi bi-folder2-open text-primary" style="font-size:3rem;"></i>
+                <h5 class="mt-3">File Manager</h5>
                 <p class="text-muted">Browse, upload, download, and delete files</p>
             </div>
         </a>
     </div>
     <div class="col-md-4">
-        <a href="{{ url_for('admin.manage_books') }}" class="card bg-dark border-secondary text-decoration-none h-100">
+        <a href="{{ url_for('admin.manage_books') }}" class="card text-decoration-none h-100 border-warning">
             <div class="card-body text-center p-4">
                 <i class="bi bi-book text-warning" style="font-size:3rem;"></i>
-                <h5 class="mt-3 text-white">Manage Books</h5>
+                <h5 class="mt-3">Manage Books</h5>
                 <p class="text-muted">View and manage all uploaded books</p>
             </div>
         </a>
     </div>
     <div class="col-md-4">
-        <a href="{{ url_for('admin.manage_users') }}" class="card bg-dark border-secondary text-decoration-none h-100">
+        <a href="{{ url_for('admin.manage_users') }}" class="card text-decoration-none h-100 border-success">
             <div class="card-body text-center p-4">
                 <i class="bi bi-people text-success" style="font-size:3rem;"></i>
-                <h5 class="mt-3 text-white">Manage Users</h5>
+                <h5 class="mt-3">Manage Users</h5>
                 <p class="text-muted">View and manage registered users</p>
             </div>
         </a>
