@@ -1,0 +1,36 @@
+[project]
+name = "booksea"
+version = "1.0.0"
+description = "BookSea - Digital Library with PDF to Audio conversion"
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+    { name = "Vathanaruban Shayarukshan" }
+]
+dependencies = [
+    "flask>=3.0.0",
+    "flask-sqlalchemy>=3.1.1",
+    "flask-login>=0.6.3",
+    "flask-wtf>=1.2.1",
+    "wtforms>=3.1.1",
+    "bcrypt>=4.1.2",
+    "gtts>=2.5.0",
+    "pymupdf>=1.23.7",
+    "deep-translator>=1.11.4",
+    "python-dotenv>=1.0.0",
+    "pillow>=10.1.0",
+    "mutagen>=1.47.0",
+    "python-docx>=1.1.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.1.0",
+]
+
+[project.scripts]
+booksea = "cli:main"
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["cli", "run"]

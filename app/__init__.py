@@ -2,6 +2,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from config import Config
+import os
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -15,6 +16,9 @@ def create_app():
 
     db.init_app(app)
     login_manager.init_app(app)
+
+    os.makedirs(app.config["UPLOAD_FOLDER_BOOKS"], exist_ok=True)
+    os.makedirs(app.config["UPLOAD_FOLDER_AUDIO"], exist_ok=True)
 
     from app.routes import main
     from app.auth import auth

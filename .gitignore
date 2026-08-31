@@ -3,9 +3,9 @@ __pycache__/
 *.pyo
 .env
 booksea.db
-media/pdf/*
+media/books/*
 media/audio/*
-!media/pdf/.gitkeep
+!media/books/.gitkeep
 !media/audio/.gitkeep
 *.egg-info/
 dist/

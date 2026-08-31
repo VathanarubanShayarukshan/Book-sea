@@ -2,12 +2,15 @@
 {% block title %}{{ book.title }} - BookSea{% endblock %}
 {% block extra_css %}
 <style>
-    #pdf-container { background: #1a1a2e; min-height: 500px; display: flex; align-items: center; justify-content: center; border-radius: 8px; overflow: hidden; }
+    .reader-container { background: #1a1a2e; min-height: 500px; border-radius: 8px; overflow: hidden; }
+    #pdf-container { display: flex; align-items: center; justify-content: center; min-height: 400px; }
     #pdf-container canvas { max-width: 100%; }
+    #text-container { padding: 20px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6; }
     .page-controls { display: flex; align-items: center; gap: 10px; }
     .audio-player { background: #16213e; border-radius: 8px; padding: 15px; }
     .share-section { background: #16213e; border-radius: 8px; padding: 15px; }
     .bookmark-toast { position: fixed; bottom: 20px; right: 20px; z-index: 9999; }
+    .file-type-badge { font-size: 0.7em; vertical-align: middle; }
 </style>
 {% endblock %}
 {% block content %}
@@ -15,8 +18,10 @@
     <div class="col-lg-8">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <h3 class="mb-1">{{ book.title }}</h3>
-                <small class="text-muted">by {{ book.uploader.username }} | {{ book.page_count }} pages | {{ book.created_at.strftime('%b %d, %Y') }}</small>
+                <h3 class="mb-1">{{ book.title }}
+                    <span class="badge bg-info file-type-badge">{{ book.file_type|upper }}</span>
+                </h3>
+                <small class="text-muted">by {{ book.uploader.username }} | {{ book.page_count }} {% if book.file_type == 'pdf' %}pages{% else %}lines{% endif %} | {{ book.created_at.strftime('%b %d, %Y') }}</small>
             </div>
             <div>
                 {% if current_user.is_authenticated and current_user.id == book.uploader_id %}
@@ -33,19 +38,29 @@
 
         <div class="card bg-dark border-secondary mb-3">
             <div class="card-body p-2">
+                {% if book.file_type == 'pdf' %}
                 <div id="pdf-container" class="text-center">
                     <canvas id="pdf-canvas"></canvas>
                 </div>
+                {% else %}
+                <div id="text-container" class="text-light">Loading...</div>
+                {% endif %}
             </div>
             <div class="card-footer bg-transparent border-secondary">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="page-controls">
+                        {% if book.file_type == 'pdf' %}
                         <button class="btn btn-outline-secondary btn-sm" onclick="prevPage()"><i class="bi bi-chevron-left"></i></button>
                         <span>Page <span id="current-page">1</span> / <span id="total-pages">{{ book.page_count }}</span></span>
                         <button class="btn btn-outline-secondary btn-sm" onclick="nextPage()"><i class="bi bi-chevron-right"></i></button>
+                        {% else %}
+                        <button class="btn btn-outline-secondary btn-sm" onclick="prevLine()"><i class="bi bi-chevron-left"></i></button>
+                        <span>Line <span id="current-page">1</span> / <span id="total-pages">{{ book.page_count }}</span></span>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="nextLine()"><i class="bi bi-chevron-right"></i></button>
+                        {% endif %}
                     </div>
                     <div>
-                        <button class="btn btn-outline-info btn-sm" onclick="extractAndTranslate()" title="Translate this page"><i class="bi bi-translate"></i> Translate</button>
+                        <button class="btn btn-outline-info btn-sm" onclick="extractAndTranslate()" title="Translate this section"><i class="bi bi-translate"></i> Translate</button>
                         <button class="btn btn-outline-warning btn-sm" onclick="shareCurrentPage()" title="Share this page"><i class="bi bi-share"></i></button>
                     </div>
                 </div>
@@ -141,7 +156,7 @@
         <div class="share-section">
             <h6><i class="bi bi-download"></i> Download</h6>
             <a href="{{ url_for('main.download_book', book_id=book.id) }}" class="btn btn-outline-info btn-sm w-100">
-                <i class="bi bi-file-earmark-pdf"></i> Download PDF
+                <i class="bi bi-file-earmark"></i> Download {{ book.file_type|upper }}
             </a>
         </div>
     </div>
@@ -155,20 +170,26 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if book.file_type == 'pdf' %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+{% endif %}
 <script>
-const PDF_URL = "{{ url_for('main.download_book', book_id=book.id) }}";
 const BOOK_ID = {{ book.id }};
+const FILE_TYPE = "{{ book.file_type }}";
 const START_PAGE = {{ bookmark.page_number if bookmark else 1 }};
 const START_AUDIO_POS = {{ bookmark.audio_position if bookmark else 0 }};
+const TOTAL_PAGES = {{ book.page_count }};
 
-let pdfDoc = null;
 let currentPage = START_PAGE;
 const totalPagesEl = document.getElementById('total-pages');
 const currentPageEl = document.getElementById('current-page');
+let bookmarkTimer = null;
+
+{% if book.file_type == 'pdf' %}
+const PDF_URL = "{{ url_for('main.download_book', book_id=book.id) }}";
+let pdfDoc = null;
 const canvas = document.getElementById('pdf-canvas');
 const ctx = canvas.getContext('2d');
-
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 async function loadPdf() {
@@ -203,8 +224,49 @@ function nextPage() {
     currentPage++;
     renderPage(currentPage);
 }
+{% else %}
+let fullText = '';
+let lines = [];
 
-let bookmarkTimer = null;
+async function loadText() {
+    try {
+        const resp = await fetch(`/api/full-text/${BOOK_ID}`);
+        const data = await resp.json();
+        if (data.text) {
+            fullText = data.text;
+            lines = fullText.split('\n');
+            totalPagesEl.textContent = lines.length;
+            renderLine(currentPage);
+        }
+    } catch(e) {
+        document.getElementById('text-container').textContent = 'Error loading file';
+    }
+}
+
+function renderLine(num) {
+    const container = document.getElementById('text-container');
+    const start = Math.max(0, num - 1);
+    const end = Math.min(lines.length, start + 50);
+    container.textContent = lines.slice(start, end).join('\n');
+    currentPageEl.textContent = num;
+    currentPage = num;
+    container.scrollTop = 0;
+    saveBookmark();
+}
+
+function prevLine() {
+    if (currentPage <= 1) return;
+    currentPage = Math.max(1, currentPage - 50);
+    renderLine(currentPage);
+}
+
+function nextLine() {
+    if (currentPage >= lines.length) return;
+    currentPage = Math.min(lines.length, currentPage + 50);
+    renderLine(currentPage);
+}
+{% endif %}
+
 function saveBookmark() {
     clearTimeout(bookmarkTimer);
     bookmarkTimer = setTimeout(() => {
@@ -330,6 +392,10 @@ if (audioPlayer) {
 
 document.getElementById('translate-lang').addEventListener('change', extractAndTranslate);
 
+{% if book.file_type == 'pdf' %}
 loadPdf();
+{% else %}
+loadText();
+{% endif %}
 </script>
 {% endblock %}

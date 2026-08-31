@@ -3,12 +3,75 @@ from flask_login import login_required, current_user
 from app import db
 from app.models import Book, Bookmark
 import os
-import fitz  # PyMuPDF
 from gtts import gTTS
 from deep_translator import GoogleTranslator
 import tempfile
 
 api_bp = Blueprint("api", __name__)
+
+
+def get_file_extension(filename):
+    return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+
+def extract_text_from_file(filepath, file_type):
+    """Extract text content from various file types."""
+    try:
+        if file_type == "pdf":
+            import fitz
+            doc = fitz.open(filepath)
+            text = ""
+            for page in doc:
+                text += page.get_text()
+            doc.close()
+            return text
+
+        elif file_type == "txt":
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+
+        elif file_type == "docx":
+            from docx import Document
+            doc = Document(filepath)
+            return "\n".join([para.text for para in doc.paragraphs])
+
+        elif file_type in ("html", "htm"):
+            from bs4 import BeautifulSoup
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                soup = BeautifulSoup(f.read(), "html.parser")
+                return soup.get_text(separator="\n", strip=True)
+
+        elif file_type == "xml":
+            from bs4 import BeautifulSoup
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                soup = BeautifulSoup(f.read(), "xml")
+                return soup.get_text(separator="\n", strip=True)
+
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
+    return ""
+
+
+def extract_page_text(filepath, file_type, page_num):
+    """Extract text from a specific page/section."""
+    try:
+        if file_type == "pdf":
+            import fitz
+            doc = fitz.open(filepath)
+            if page_num < 0 or page_num >= len(doc):
+                doc.close()
+                return None
+            text = doc[page_num].get_text()
+            doc.close()
+            return text
+        else:
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()
+                if page_num < 0 or page_num >= len(lines):
+                    return None
+                return lines[page_num]
+    except:
+        return None
 
 
 @api_bp.route("/bookmark", methods=["POST"])
@@ -57,23 +120,19 @@ def get_bookmark(book_id):
 @login_required
 def convert_to_audio(book_id):
     book = Book.query.get_or_404(book_id)
-    pdf_path = os.path.join(current_app.config["UPLOAD_FOLDER_PDF"], book.filename)
+    file_path = os.path.join(current_app.config["UPLOAD_FOLDER_BOOKS"], book.filename)
 
-    if not os.path.exists(pdf_path):
-        return jsonify({"error": "PDF file not found"}), 404
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
 
     data = request.get_json() or {}
     lang = data.get("language", "en")
 
     try:
-        doc = fitz.open(pdf_path)
-        full_text = ""
-        for page in doc:
-            full_text += page.get_text()
-        doc.close()
+        full_text = extract_text_from_file(file_path, book.file_type)
 
         if not full_text.strip():
-            return jsonify({"error": "No text found in PDF"}), 400
+            return jsonify({"error": "No text found in file"}), 400
 
         tts = gTTS(text=full_text, lang=lang, slow=False)
         audio_filename = f"{book.id}_{lang}.mp3"
@@ -92,20 +151,45 @@ def convert_to_audio(book_id):
 @login_required
 def extract_text(book_id):
     book = Book.query.get_or_404(book_id)
-    pdf_path = os.path.join(current_app.config["UPLOAD_FOLDER_PDF"], book.filename)
+    file_path = os.path.join(current_app.config["UPLOAD_FOLDER_BOOKS"], book.filename)
     page_num = request.args.get("page", 1, type=int) - 1
 
-    if not os.path.exists(pdf_path):
-        return jsonify({"error": "PDF not found"}), 404
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
 
     try:
-        doc = fitz.open(pdf_path)
-        if page_num < 0 or page_num >= len(doc):
+        if book.file_type == "pdf":
+            import fitz
+            doc = fitz.open(file_path)
+            if page_num < 0 or page_num >= len(doc):
+                doc.close()
+                return jsonify({"error": "Invalid page number"}), 400
+            text = doc[page_num].get_text()
             doc.close()
-            return jsonify({"error": "Invalid page number"}), 400
-        text = doc[page_num].get_text()
-        doc.close()
+        else:
+            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()
+                if page_num < 0 or page_num >= len(lines):
+                    return jsonify({"error": "Invalid line number"}), 400
+                text = lines[page_num]
+
         return jsonify({"text": text, "page": page_num + 1})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@api_bp.route("/full-text/<int:book_id>", methods=["GET"])
+@login_required
+def get_full_text(book_id):
+    book = Book.query.get_or_404(book_id)
+    file_path = os.path.join(current_app.config["UPLOAD_FOLDER_BOOKS"], book.filename)
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
+
+    try:
+        text = extract_text_from_file(file_path, book.file_type)
+        return jsonify({"text": text, "file_type": book.file_type})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

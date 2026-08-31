@@ -26,14 +26,14 @@ def admin_required(f):
 @admin_required
 def panel():
     base = os.path.abspath(os.path.join(current_app.root_path, ".."))
-    pdf_count = len([f for f in os.listdir(current_app.config["UPLOAD_FOLDER_PDF"]) if f.endswith(".pdf")]) if os.path.exists(current_app.config["UPLOAD_FOLDER_PDF"]) else 0
+    book_count_files = len([f for f in os.listdir(current_app.config["UPLOAD_FOLDER_BOOKS"]) if not f.startswith(".")]) if os.path.exists(current_app.config["UPLOAD_FOLDER_BOOKS"]) else 0
     audio_count = len([f for f in os.listdir(current_app.config["UPLOAD_FOLDER_AUDIO"]) if f.endswith(".mp3")]) if os.path.exists(current_app.config["UPLOAD_FOLDER_AUDIO"]) else 0
     from app.models import User
     user_count = User.query.count()
     book_count = Book.query.count()
     return render_template(
         "admin/panel.html",
-        pdf_count=pdf_count,
+        pdf_count=book_count_files,
         audio_count=audio_count,
         user_count=user_count,
         book_count=book_count,

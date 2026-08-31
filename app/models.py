@@ -42,6 +42,7 @@ class Book(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, default="")
     filename = db.Column(db.String(256), nullable=False)
+    file_type = db.Column(db.String(10), default="pdf")  # pdf, txt, docx, html, xml
     audio_filename = db.Column(db.String(256), default="")
     cover_image = db.Column(db.String(256), default="")
     visibility = db.Column(db.String(20), default="public")  # public, private, share

@@ -12,9 +12,10 @@
             <tr>
                 <th>#</th>
                 <th>Title</th>
+                <th>Type</th>
                 <th>Uploader</th>
                 <th>Visibility</th>
-                <th>Pages</th>
+                <th>Pages/Lines</th>
                 <th>Audio</th>
                 <th>Date</th>
                 <th>Actions</th>
@@ -25,6 +26,7 @@
             <tr>
                 <td>{{ book.id }}</td>
                 <td><a href="{{ url_for('main.view_book', book_id=book.id) }}" class="text-info">{{ book.title }}</a></td>
+                <td><span class="badge bg-secondary">{{ book.file_type|upper }}</span></td>
                 <td>{{ book.uploader.username }}</td>
                 <td>
                     <span class="badge bg-{% if book.visibility == 'public' %}success{% elif book.visibility == 'share' %}warning text-dark{% else %}secondary{% endif %}">
