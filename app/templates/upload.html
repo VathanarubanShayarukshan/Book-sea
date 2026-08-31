@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Upload Book - BookSea{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card bg-dark border-secondary">
+            <div class="card-body p-4">
+                <h3 class="mb-4"><i class="bi bi-cloud-upload"></i> Upload Book</h3>
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Book Title *</label>
+                        <input type="text" class="form-control" name="title" required placeholder="Enter book title">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" name="description" rows="3" placeholder="Brief description of the book..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">PDF File *</label>
+                        <input type="file" class="form-control" name="pdf_file" accept=".pdf" required>
+                        <div class="form-text">Max 100MB. Only PDF files allowed.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Visibility</label>
+                        <select class="form-select" name="visibility">
+                            <option value="public">Public - Everyone can see</option>
+                            <option value="share">Share Link - Anyone with link can read</option>
+                            <option value="private">Private - Only you can see</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-info w-100"><i class="bi bi-upload"></i> Upload Book</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

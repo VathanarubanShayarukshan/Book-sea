@@ -1,0 +1,22 @@
+       pr1
+===================
+
+hi make a python based web app for a book library. make  the /home/ubuntu/Tools/book-sea folder 
+and use it as  the project folder. users can read pdf books from library in online or download as 
+file. and user can listen audio of that book app want convert pdf books to audio and set a btn to 
+listen the audio in online and download it as a mp3 file for offline. when user listen or read 
+books and leave form app then the last page or last possition of the book want save as a book mark 
+when user open app and open book again then book want cotinu in last book mark suchas youtube app 
+video bookmark. user can sigin with gmail id and user name and password and login with user name or email
+and password is must and upload thair books with book name and disciption and visiblit option public or 
+privet or can read by others with shareing url only all users can share book's page with url and sahre 
+with whats app or copy url btn save pdf books in /home/ubuntu/Tools/book-sea/media/pdf folder and save
+adudio format of books in /home/ubuntu/Tools/book-sea/media/audio folder. make search manel to serach 
+books.and add a traslate mode to read or listen books in any languige. make a admin cpanel for conrall 
+full project folder in my vps i can download or upload and edit files from cpanel. make a .bat file and
+.sh file for update from github and another bat and sh file for use pdf to audio converter from terminal.
+i can run that bash or batch file for install th app for os and use the command (example:- booksea -p [PDF 
+file path] -a [audio output  file name with path] ). this is my github repo url 
+https://github.com/VathanarubanShayarukshan/Book-sea.git after tool work is finished then push into is repo 
+please.ok do your work 
+
