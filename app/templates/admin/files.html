@@ -2,21 +2,23 @@
 {% block title %}File Manager - BookSea Admin{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3><i class="bi bi-folder2-open text-primary"></i> File Manager</h3>
+    <div>
+        <h3 class="mb-1"><i class="bi bi-folder2-open text-primary"></i> File Manager</h3>
+        <p class="text-muted mb-0">Browse and manage project files</p>
+    </div>
     <a href="{{ url_for('admin.panel') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
 </div>
 
 <div class="card">
-    <div class="card-header bg-transparent">
-        <small class="text-muted">Path: /{{ current_path if current_path else '(root)' }}</small>
-    </div>
-    <div class="card-body">
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+        <small class="text-muted"><i class="bi bi-folder"></i> /{{ current_path if current_path else '(root)' }}</small>
         {% if current_path %}
-        <a href="{{ url_for('admin.file_manager', path='/'.join(current_path.split('/')[:-1])) }}" class="btn btn-outline-secondary btn-sm mb-3">
-            <i class="bi bi-arrow-up"></i> Parent Directory
+        <a href="{{ url_for('admin.file_manager', path='/'.join(current_path.split('/')[:-1])) }}" class="btn btn-outline-secondary btn-sm py-0">
+            <i class="bi bi-arrow-up"></i> Up
         </a>
         {% endif %}
-
+    </div>
+    <div class="card-body">
         <div class="mb-3">
             <form method="POST" action="{{ url_for('admin.upload_file') }}" enctype="multipart/form-data" class="d-flex gap-2">
                 <input type="hidden" name="path" value="{{ current_path }}">
@@ -39,8 +41,8 @@
                     <tr>
                         <td>
                             {% if item.is_dir %}
-                                <a href="{{ url_for('admin.file_manager', path=item.path) }}" class="text-primary text-decoration-none">
-                                    <i class="bi bi-folder-fill"></i> {{ item.name }}
+                                <a href="{{ url_for('admin.file_manager', path=item.path) }}" class="text-primary text-decoration-none fw-semibold">
+                                    <i class="bi bi-folder-fill text-warning"></i> {{ item.name }}
                                 </a>
                             {% else %}
                                 <i class="bi bi-file-earmark text-muted"></i> {{ item.name }}
@@ -55,17 +57,19 @@
                         </td>
                         <td>
                             {% if not item.is_dir %}
-                            {% if item.is_text %}
-                            <a href="{{ url_for('admin.edit_file', path=item.path) }}" class="btn btn-outline-warning btn-sm py-0"><i class="bi bi-pencil"></i></a>
-                            {% endif %}
-                            <a href="{{ url_for('admin.download_file', filepath=item.path) }}" class="btn btn-outline-primary btn-sm py-0"><i class="bi bi-download"></i></a>
-                            <button class="btn btn-outline-danger btn-sm py-0" onclick="deleteFile('{{ item.path }}')"><i class="bi bi-trash"></i></button>
+                            <div class="d-flex gap-1">
+                                {% if item.is_text %}
+                                <a href="{{ url_for('admin.edit_file', path=item.path) }}" class="btn btn-outline-warning btn-sm py-0" title="Edit"><i class="bi bi-pencil"></i></a>
+                                {% endif %}
+                                <a href="{{ url_for('admin.download_file', filepath=item.path) }}" class="btn btn-outline-primary btn-sm py-0" title="Download"><i class="bi bi-download"></i></a>
+                                <button class="btn btn-outline-danger btn-sm py-0" onclick="deleteFile('{{ item.path }}')" title="Delete"><i class="bi bi-trash"></i></button>
+                            </div>
                             {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
                     {% if not items %}
-                    <tr><td colspan="3" class="text-center text-muted">Empty directory</td></tr>
+                    <tr><td colspan="3" class="text-center text-muted py-4">Empty directory</td></tr>
                     {% endif %}
                 </tbody>
             </table>

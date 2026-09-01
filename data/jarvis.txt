@@ -34,3 +34,9 @@ the  file too. and book want coverted audio when pload automaticly please check 
 and translation is bad and singin with google is not suporting but google so cheack it.donot use numbeers for book
 make id like yt serach bar is good. but ui is only 45% ok. affter you buld the app then cheack fulll web functions 
 and push into github.show progress bar for upload book and convert to audio. ok do your work.
+
+       pr4
+===================
+
+upload progress is 100% but it is not switch to audio covert.and audio not be convert.uploader say when upload book 
+network error try again so dbug it.

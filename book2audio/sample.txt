@@ -1,0 +1,9 @@
+This is a sample text file for testing book2audio.
+
+book2audio converts text files to audio files.
+
+You can use it to convert books, articles, and other text documents to audio format.
+
+It supports multiple languages including Tamil, English, French, and many more.
+
+The tool is free and open source, requiring no API keys.

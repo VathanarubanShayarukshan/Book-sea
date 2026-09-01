@@ -1,12 +1,51 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, abort, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, abort, current_app, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from app import db
 from app.models import Book, Bookmark, User
 import secrets
 import os
+import threading
+import tempfile
 
 main = Blueprint("main", __name__)
+
+GOOGLE_TTS_MAX = 4500
+
+
+def chunked_tts(text, lang, output_path):
+    """Convert text to MP3 via gTTS, splitting into chunks under GOOGLE_TTS_MAX chars."""
+    from gtts import gTTS
+    chunks = []
+    sentences = text.replace("\n", " \n ").split(". ")
+    current = ""
+    for s in sentences:
+        if len(current) + len(s) + 2 > GOOGLE_TTS_MAX:
+            if current.strip():
+                chunks.append(current.strip())
+            current = s
+        else:
+            current = (current + ". " + s) if current else s
+    if current.strip():
+        chunks.append(current.strip())
+
+    if not chunks:
+        raise ValueError("No text to convert")
+
+    tmp_dir = tempfile.mkdtemp(prefix="booksea_tts_")
+    part_files = []
+    for i, chunk in enumerate(chunks):
+        tts = gTTS(text=chunk, lang=lang, slow=False)
+        part_path = os.path.join(tmp_dir, f"part_{i:04d}.mp3")
+        tts.save(part_path)
+        part_files.append(part_path)
+
+    with open(output_path, "wb") as out_f:
+        for pf in part_files:
+            with open(pf, "rb") as in_f:
+                out_f.write(in_f.read())
+            os.remove(pf)
+    os.rmdir(tmp_dir)
 
 
 ALLOWED_EXTENSIONS = {"pdf", "txt", "docx", "html", "htm", "xml"}
@@ -39,15 +78,32 @@ def extract_text_from_file(filepath, file_type):
             return "\n".join([para.text for para in doc.paragraphs])
         elif file_type in ("html", "htm"):
             from bs4 import BeautifulSoup
-            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-                soup = BeautifulSoup(f.read(), "html.parser")
-                return soup.get_text(separator="\n", strip=True)
+            for enc in ["utf-8", "latin-1", "cp1252", "iso-8859-1"]:
+                try:
+                    with open(filepath, "r", encoding=enc) as f:
+                        content = f.read()
+                    soup = BeautifulSoup(content, "html.parser")
+                    text = soup.get_text(separator="\n", strip=True)
+                    if text and text.strip():
+                        return text
+                except (UnicodeDecodeError, UnicodeError):
+                    continue
+            return ""
         elif file_type == "xml":
             from bs4 import BeautifulSoup
-            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
-                soup = BeautifulSoup(f.read(), "xml")
-                return soup.get_text(separator="\n", strip=True)
-    except Exception:
+            for enc in ["utf-8", "latin-1", "cp1252", "iso-8859-1"]:
+                try:
+                    with open(filepath, "r", encoding=enc) as f:
+                        content = f.read()
+                    soup = BeautifulSoup(content, "xml")
+                    text = soup.get_text(separator="\n", strip=True)
+                    if text and text.strip():
+                        return text
+                except (UnicodeDecodeError, UnicodeError):
+                    continue
+            return ""
+    except Exception as e:
+        print(f"[BookSea] extract_text error for {filepath}: {e}")
         return ""
     return ""
 
@@ -65,6 +121,33 @@ def count_pages_or_lines(filepath, file_type):
                 return max(1, len(f.readlines()))
     except:
         return 1
+
+
+def convert_book_to_audio(book_id, file_path, ext, app_ref):
+    """Background audio conversion for uploaded books."""
+    with app_ref.app_context():
+        try:
+            print(f"[BookSea] Starting audio conversion for book {book_id}, file: {file_path}, type: {ext}")
+            full_text = extract_text_from_file(file_path, ext)
+            if not full_text or not full_text.strip():
+                print(f"[BookSea] No text extracted from {file_path} (type={ext}), skipping audio conversion")
+                return
+
+            print(f"[BookSea] Extracted {len(full_text)} chars from {file_path}")
+            if len(full_text) > 50000:
+                full_text = full_text[:50000]
+
+            audio_filename = f"{book_id}_en.mp3"
+            audio_path = os.path.join(app_ref.config["UPLOAD_FOLDER_AUDIO"], audio_filename)
+            chunked_tts(full_text, "en", audio_path)
+
+            book = Book.query.get(book_id)
+            if book:
+                book.audio_filename = audio_filename
+                db.session.commit()
+                print(f"[BookSea] Audio conversion complete: {audio_filename}")
+        except Exception as e:
+            print(f"[BookSea] Audio conversion failed for book {book_id}: {e}")
 
 
 @main.route("/")
@@ -182,14 +265,20 @@ def upload_book():
         file = request.files.get("book_file")
 
         if not title:
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return jsonify({"error": "Book title is required."}), 400
             flash("Book title is required.", "danger")
             return render_template("upload.html")
 
         if not file or not file.filename:
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return jsonify({"error": "Please select a file to upload."}), 400
             flash("Please select a file to upload.", "danger")
             return render_template("upload.html")
 
         if not allowed_file(file.filename):
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return jsonify({"error": "Allowed file types: PDF, TXT, DOCX, HTML, XML"}), 400
             flash("Allowed file types: PDF, TXT, DOCX, HTML, XML", "danger")
             return render_template("upload.html")
 
@@ -217,20 +306,18 @@ def upload_book():
         db.session.add(book)
         db.session.commit()
 
-        try:
-            from gtts import gTTS
-            full_text = extract_text_from_file(file_path, ext)
-            if full_text and full_text.strip():
-                if len(full_text) > 50000:
-                    full_text = full_text[:50000]
-                tts = gTTS(text=full_text, lang="en", slow=False)
-                audio_filename = f"{book.id}_en.mp3"
-                audio_path = os.path.join(current_app.config["UPLOAD_FOLDER_AUDIO"], audio_filename)
-                tts.save(audio_path)
-                book.audio_filename = audio_filename
-                db.session.commit()
-        except Exception:
-            pass
+        threading.Thread(
+            target=convert_book_to_audio,
+            args=(book.id, file_path, ext, current_app._get_current_object()),
+            daemon=True,
+        ).start()
+
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return jsonify({
+                "status": "ok",
+                "redirect": url_for("main.view_book", hash_id=book.hash_id),
+                "hash_id": book.hash_id,
+            })
 
         flash("Book uploaded successfully!", "success")
         return redirect(url_for("main.view_book", hash_id=book.hash_id))

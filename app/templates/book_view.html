@@ -2,12 +2,19 @@
 {% block title %}{{ book.title }} - BookSea{% endblock %}
 {% block extra_css %}
 <style>
-    #pdf-container { display: flex; align-items: center; justify-content: center; min-height: 400px; background: #f1f5f9; border-radius: 8px; }
-    #pdf-container canvas { max-width: 100%; }
-    #text-container { padding: 20px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6; background: #f8fafc; border-radius: 8px; color: #1e293b; }
-    .page-controls { display: flex; align-items: center; gap: 10px; }
+    #pdf-container { display: flex; align-items: center; justify-content: center; min-height: 400px; background: #f1f5f9; border-radius: 12px; }
+    #pdf-container canvas { max-width: 100%; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    #text-container { padding: 25px; max-height: 550px; overflow-y: auto; font-family: 'Georgia', 'Times New Roman', serif; font-size: 15px; line-height: 1.8; background: #f8fafc; border-radius: 12px; color: #1e293b; }
+    #html-container iframe { min-height: 500px; border: none; border-radius: 12px; width: 100%; }
+    .page-controls { display: flex; align-items: center; gap: 12px; }
     .bookmark-toast { position: fixed; bottom: 20px; right: 20px; z-index: 9999; }
-    .file-type-badge { font-size: 0.7em; vertical-align: middle; }
+    .file-type-badge { font-size: 0.7em; vertical-align: middle; margin-left: 6px; }
+    .reader-card { border-radius: 12px; overflow: hidden; }
+    .reader-card .card-footer { border-top: 1px solid #e2e8f0; }
+    .sidebar-card { border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+    .sidebar-card h6 { font-weight: 600; font-size: 0.95rem; margin-bottom: 12px; }
+    .btn-toolbar .btn { border-radius: 8px; }
+    .translate-panel { border-radius: 12px; overflow: hidden; }
 </style>
 {% endblock %}
 {% block content %}
@@ -15,15 +22,20 @@
     <div class="col-lg-8">
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-                <h3 class="mb-1">{{ book.title }}
+                <h3 class="mb-1">
+                    {{ book.title }}
                     <span class="badge bg-primary file-type-badge">{{ book.file_type|upper }}</span>
                 </h3>
-                <small class="text-muted">by {{ book.uploader.username }} | {{ book.page_count }} {% if book.file_type == 'pdf' %}pages{% else %}lines{% endif %} | {{ book.created_at.strftime('%b %d, %Y') }}</small>
+                <small class="text-muted">
+                    <i class="bi bi-person"></i> {{ book.uploader.username }}
+                    &middot; <i class="bi bi-{{ 'file-earmark-text' if book.file_type != 'pdf' else 'file-earmark-pdf' }}"></i> {{ book.page_count }} {% if book.file_type == 'pdf' %}pages{% elif book.file_type in ('html','htm','xml') %}view{% else %}lines{% endif %}
+                    &middot; {{ book.created_at.strftime('%b %d, %Y') }}
+                </small>
             </div>
             <div>
                 {% if current_user.is_authenticated and current_user.id == book.uploader_id %}
                 <form method="POST" action="{{ url_for('main.delete_book', hash_id=book.hash_id) }}" onsubmit="return confirm('Delete this book?');" class="d-inline">
-                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Delete</button>
                 </form>
                 {% endif %}
             </div>
@@ -33,11 +45,15 @@
         <p class="text-muted mb-3">{{ book.description }}</p>
         {% endif %}
 
-        <div class="card mb-3">
+        <div class="card reader-card mb-3">
             <div class="card-body p-2">
                 {% if book.file_type == 'pdf' %}
                 <div id="pdf-container" class="text-center">
                     <canvas id="pdf-canvas"></canvas>
+                </div>
+                {% elif book.file_type in ('html', 'htm', 'xml') %}
+                <div id="html-container">
+                    <iframe id="html-frame"></iframe>
                 </div>
                 {% else %}
                 <div id="text-container">Loading...</div>
@@ -48,31 +64,37 @@
                     <div class="page-controls">
                         {% if book.file_type == 'pdf' %}
                         <button class="btn btn-outline-secondary btn-sm" onclick="prevPage()"><i class="bi bi-chevron-left"></i></button>
-                        <span>Page <span id="current-page">1</span> / <span id="total-pages">{{ book.page_count }}</span></span>
+                        <span class="text-muted">Page <strong id="current-page">1</strong> / <strong id="total-pages">{{ book.page_count }}</strong></span>
                         <button class="btn btn-outline-secondary btn-sm" onclick="nextPage()"><i class="bi bi-chevron-right"></i></button>
+                        {% elif book.file_type in ('html', 'htm', 'xml') %}
+                        <span class="text-muted"><i class="bi bi-eye"></i> HTML View</span>
                         {% else %}
                         <button class="btn btn-outline-secondary btn-sm" onclick="prevLine()"><i class="bi bi-chevron-left"></i></button>
-                        <span>Line <span id="current-page">1</span> / <span id="total-pages">{{ book.page_count }}</span></span>
+                        <span class="text-muted">Line <strong id="current-page">1</strong> / <strong id="total-pages">{{ book.page_count }}</strong></span>
                         <button class="btn btn-outline-secondary btn-sm" onclick="nextLine()"><i class="bi bi-chevron-right"></i></button>
                         {% endif %}
                     </div>
-                    <div>
-                        <button class="btn btn-outline-primary btn-sm" onclick="extractAndTranslate()" title="Translate"><i class="bi bi-translate"></i> Translate</button>
-                        <button class="btn btn-outline-warning btn-sm" onclick="shareCurrentPage()" title="Share"><i class="bi bi-share"></i></button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="extractAndTranslate()" title="Translate">
+                            <i class="bi bi-translate"></i> Translate
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" onclick="shareCurrentPage()" title="Share this page">
+                            <i class="bi bi-share"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Translation Panel -->
-        <div id="translate-panel" class="card mb-3 d-none">
-            <div class="card-header bg-transparent d-flex justify-content-between">
-                <span><i class="bi bi-translate"></i> Translation</span>
+        <div id="translate-panel" class="card translate-panel mb-3 d-none">
+            <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-translate text-primary"></i> <strong>Translation</strong></span>
                 <button class="btn-close" onclick="document.getElementById('translate-panel').classList.add('d-none')"></button>
             </div>
             <div class="card-body">
-                <div class="mb-2">
-                    <select id="translate-lang" class="form-select form-select-sm">
+                <div class="mb-3">
+                    <select id="translate-lang" class="form-select">
                         <option value="en">English</option>
                         <option value="ta">Tamil</option>
                         <option value="hi">Hindi</option>
@@ -92,69 +114,85 @@
                     </select>
                 </div>
                 <div id="translated-text" class="p-3 bg-light rounded" style="min-height:60px;max-height:300px;overflow-y:auto;"></div>
-                <button class="btn btn-outline-primary btn-sm mt-2" onclick="listenTranslation()"><i class="bi bi-volume-up"></i> Listen Translation</button>
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-primary btn-sm" onclick="listenTranslation()">
+                        <i class="bi bi-volume-up"></i> Listen Translation
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="copyTranslation()">
+                        <i class="bi bi-clipboard"></i> Copy
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="col-lg-4">
         <!-- Audio Player -->
-        <div class="audio-player mb-3">
-            <h6><i class="bi bi-headphones text-primary"></i> Audio</h6>
-            {% if book.audio_filename %}
-            <audio id="audio-player" controls class="w-100 mb-2" data-book-id="{{ book.hash_id }}">
-                <source src="/media/audio/{{ book.audio_filename }}" type="audio/mpeg">
-            </audio>
-            <a href="{{ url_for('main.download_audio', hash_id=book.hash_id) }}" class="btn btn-outline-primary btn-sm w-100"><i class="bi bi-download"></i> Download MP3</a>
-            {% else %}
-            <p class="text-muted small">Audio not converted yet.</p>
-            {% if current_user.is_authenticated %}
-            <button class="btn btn-primary btn-sm w-100" id="convert-btn" onclick="convertToAudio()">
-                <i class="bi bi-soundwave"></i> Convert to Audio
-            </button>
-            <div id="convert-progress" class="d-none mt-2">
-                <div class="progress">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%">Converting...</div>
+        <div class="card sidebar-card">
+            <div class="card-body">
+                <h6><i class="bi bi-headphones text-primary"></i> Audio Player</h6>
+                {% if book.audio_filename %}
+                <audio id="audio-player" controls class="w-100 mb-3" data-book-id="{{ book.hash_id }}">
+                    <source src="/media/audio/{{ book.audio_filename }}" type="audio/mpeg">
+                </audio>
+                <a href="{{ url_for('main.download_audio', hash_id=book.hash_id) }}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-download"></i> Download MP3
+                </a>
+                {% else %}
+                <p class="text-muted small mb-3">Audio not converted yet.</p>
+                {% if current_user.is_authenticated %}
+                <button class="btn btn-primary btn-sm w-100" id="convert-btn" onclick="convertToAudio()">
+                    <i class="bi bi-soundwave"></i> Convert to Audio
+                </button>
+                <div id="convert-progress" class="d-none mt-3">
+                    <div class="progress" style="height:8px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div>
+                    </div>
+                    <small class="text-muted d-block mt-1 text-center">Converting, please wait...</small>
                 </div>
+                {% endif %}
+                {% endif %}
             </div>
-            {% endif %}
-            {% endif %}
         </div>
 
         <!-- Share Section -->
-        <div class="share-section mb-3">
-            <h6><i class="bi bi-share text-primary"></i> Share</h6>
-            {% if book.visibility == 'share' and book.share_token %}
-            <div class="input-group input-group-sm mb-2">
-                <input type="text" class="form-control" id="share-url"
-                       value="{{ request.host_url }}book/shared/{{ book.share_token }}" readonly>
-                <button class="btn btn-outline-primary" onclick="copyShareUrl()"><i class="bi bi-clipboard"></i></button>
+        <div class="card sidebar-card">
+            <div class="card-body">
+                <h6><i class="bi bi-share text-success"></i> Share</h6>
+                {% if book.visibility == 'share' and book.share_token %}
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" class="form-control" id="share-url"
+                           value="{{ request.host_url }}book/shared/{{ book.share_token }}" readonly>
+                    <button class="btn btn-outline-primary" onclick="copyShareUrl()"><i class="bi bi-clipboard"></i></button>
+                </div>
+                <a href="https://wa.me/?text={{ book.title }}%20-%20{{ request.host_url }}book/shared/{{ book.share_token }}"
+                   class="btn btn-outline-success btn-sm w-100" target="_blank">
+                    <i class="bi bi-whatsapp"></i> Share on WhatsApp
+                </a>
+                {% elif book.visibility == 'public' %}
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" class="form-control" id="share-url"
+                           value="{{ request.host_url }}book/{{ book.hash_id }}" readonly>
+                    <button class="btn btn-outline-primary" onclick="copyShareUrl()"><i class="bi bi-clipboard"></i></button>
+                </div>
+                <a href="https://wa.me/?text={{ book.title }}%20-%20{{ request.host_url }}book/{{ book.hash_id }}"
+                   class="btn btn-outline-success btn-sm w-100" target="_blank">
+                    <i class="bi bi-whatsapp"></i> Share on WhatsApp
+                </a>
+                {% else %}
+                <p class="text-muted small">Private book - sharing disabled.</p>
+                {% endif %}
             </div>
-            <a href="https://wa.me/?text={{ book.title }}%20-%20{{ request.host_url }}book/shared/{{ book.share_token }}"
-               class="btn btn-outline-success btn-sm w-100" target="_blank">
-                <i class="bi bi-whatsapp"></i> Share on WhatsApp
-            </a>
-            {% elif book.visibility == 'public' %}
-            <div class="input-group input-group-sm mb-2">
-                <input type="text" class="form-control" id="share-url"
-                       value="{{ request.host_url }}book/{{ book.hash_id }}" readonly>
-                <button class="btn btn-outline-primary" onclick="copyShareUrl()"><i class="bi bi-clipboard"></i></button>
-            </div>
-            <a href="https://wa.me/?text={{ book.title }}%20-%20{{ request.host_url }}book/{{ book.hash_id }}"
-               class="btn btn-outline-success btn-sm w-100" target="_blank">
-                <i class="bi bi-whatsapp"></i> Share on WhatsApp
-            </a>
-            {% else %}
-            <p class="text-muted small">Private book - sharing disabled.</p>
-            {% endif %}
         </div>
 
         <!-- Download -->
-        <div class="share-section">
-            <h6><i class="bi bi-download text-primary"></i> Download</h6>
-            <a href="{{ url_for('main.download_book', hash_id=book.hash_id) }}" class="btn btn-outline-primary btn-sm w-100">
-                <i class="bi bi-file-earmark"></i> Download {{ book.file_type|upper }}
-            </a>
+        <div class="card sidebar-card">
+            <div class="card-body">
+                <h6><i class="bi bi-download text-primary"></i> Download</h6>
+                <a href="{{ url_for('main.download_book', hash_id=book.hash_id) }}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-file-earmark"></i> Download {{ book.file_type|upper }}
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -220,6 +258,31 @@ function nextPage() {
     currentPage++;
     renderPage(currentPage);
 }
+
+{% elif book.file_type in ('html', 'htm', 'xml') %}
+
+async function loadHtml() {
+    try {
+        const resp = await fetch(`/api/raw-file/${BOOK_HASH}`);
+        const data = await resp.json();
+        if (data.content) {
+            const frame = document.getElementById('html-frame');
+            const doc = frame.contentDocument || frame.contentWindow.document;
+            doc.open();
+            doc.write(data.content);
+            doc.close();
+            totalPagesEl.textContent = 1;
+            currentPageEl.textContent = 1;
+            saveBookmark();
+        }
+    } catch(e) {
+        document.getElementById('html-container').innerHTML = '<p class="text-danger p-3">Error loading file</p>';
+    }
+}
+
+function prevPage() {}
+function nextPage() {}
+
 {% else %}
 let fullText = '';
 let lines = [];
@@ -293,7 +356,12 @@ async function convertToAudio() {
 
     try {
         const resp = await fetch(`/api/convert-audio/${BOOK_HASH}`, { method: 'POST', headers: {'Content-Type':'application/json'} });
-        const data = await resp.json();
+        let data;
+        try {
+            data = await resp.json();
+        } catch(parseErr) {
+            data = { error: 'Server returned invalid response. Text may not be extractable from this file.' };
+        }
         if (data.status === 'ok') {
             location.reload();
         } else {
@@ -303,7 +371,7 @@ async function convertToAudio() {
             progress.classList.add('d-none');
         }
     } catch(e) {
-        alert('Error: ' + e.message);
+        alert('Network error: ' + e.message);
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-soundwave"></i> Convert to Audio';
         progress.classList.add('d-none');
@@ -314,23 +382,29 @@ async function extractAndTranslate() {
     const panel = document.getElementById('translate-panel');
     panel.classList.remove('d-none');
     const lang = document.getElementById('translate-lang').value;
+    const translatedEl = document.getElementById('translated-text');
+    translatedEl.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm text-primary"></div> Translating...</div>';
 
     try {
         const resp = await fetch(`/api/extract-text/${BOOK_HASH}?page=${currentPage}`);
         const data = await resp.json();
-        if (data.text) {
+        if (data.text && data.text.trim()) {
             const tResp = await fetch('/api/translate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: data.text, target: lang })
             });
             const tData = await tResp.json();
-            document.getElementById('translated-text').textContent = tData.translated || tData.error;
+            if (tData.translated) {
+                translatedEl.textContent = tData.translated;
+            } else {
+                translatedEl.textContent = tData.error || 'Translation failed';
+            }
         } else {
-            document.getElementById('translated-text').textContent = data.error || 'No text on this page';
+            translatedEl.textContent = data.error || 'No text on this page';
         }
     } catch(e) {
-        document.getElementById('translated-text').textContent = 'Error: ' + e.message;
+        translatedEl.textContent = 'Error: ' + e.message;
     }
 }
 
@@ -349,9 +423,18 @@ async function listenTranslation() {
         if (data.audio_url) {
             const audio = new Audio(data.audio_url);
             audio.play();
+        } else {
+            alert('TTS error: ' + (data.error || 'Failed'));
         }
     } catch(e) {
         alert('Error: ' + e.message);
+    }
+}
+
+function copyTranslation() {
+    const text = document.getElementById('translated-text').textContent;
+    if (text) {
+        navigator.clipboard.writeText(text).then(() => alert('Translation copied!'));
     }
 }
 
@@ -390,6 +473,8 @@ document.getElementById('translate-lang').addEventListener('change', extractAndT
 
 {% if book.file_type == 'pdf' %}
 loadPdf();
+{% elif book.file_type in ('html', 'htm', 'xml') %}
+loadHtml();
 {% else %}
 loadText();
 {% endif %}

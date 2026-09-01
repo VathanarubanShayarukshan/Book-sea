@@ -1,0 +1,73 @@
+book2audio Windows Installation Guide
+=====================================
+
+1. Prerequisites:
+   - Python 3.6 or higher
+     Download from: https://www.python.org/downloads/
+     IMPORTANT: Check "Add Python to PATH" during installation!
+   
+   - ffmpeg (optional but recommended)
+     Download from: https://ffmpeg.org/download.html
+     Or run: winget install ffmpeg
+
+2. Installation:
+   Option A: Double-click install.bat
+   
+   Option B: Open Command Prompt and run:
+   cd book2audio
+   install.bat
+
+3. Usage:
+   Open Command Prompt and run:
+   
+   book2audio -h              Show help menu
+   book2audio -lh             Show language list
+   book2audio -i book.txt -o audiobook.mp3
+   book2audio -i book.txt -o audiobook.mp3 -l ta
+
+4. Supported File Formats:
+   - .txt (Plain Text)
+   - .html, .htm (HTML)
+   - .docx (Word)
+   - .odt (OpenDocument)
+   - .md, .markdown (Markdown)
+   - .rtf (Rich Text Format)
+   - .epub (E-book)
+   - .fb2 (FictionBook)
+
+5. Supported Languages:
+   - ta = Tamil
+   - en = English
+   - fr = French
+   - de = German
+   - es = Spanish
+   - hi = Hindi
+   - ja = Japanese
+   - ko = Korean
+   - zh = Chinese
+   - ar = Arabic
+   - And many more (60+ languages)
+
+6. Update:
+   Double-click update.bat
+   Or run: book2audio -u https://github.com/username/book2audio
+
+7. Uninstall:
+   Double-click uninstall.bat
+   Or run: book2audio -r
+
+Troubleshooting:
+----------------
+- "Python is not recognized" error:
+  Reinstall Python and make sure to check "Add Python to PATH"
+  
+- "book2audio is not recognized" error:
+  Check if %USERPROFILE%\bin is in your PATH
+  
+- Audio quality issues:
+  Make sure ffmpeg is installed
+
+Direct Python Usage:
+--------------------
+python "%USERPROFILE%\.book2audio\book2audio.py" -h
+python "%USERPROFILE%\.book2audio\book2audio.py" -i book.txt -o output.mp3 -l ta

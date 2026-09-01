@@ -89,12 +89,20 @@ def logout():
 @auth.route("/google/callback")
 def google_callback():
     code = request.args.get("code")
+    error = request.args.get("error")
+    if error:
+        flash(f"Google authentication error: {error}", "danger")
+        return redirect(url_for("auth.login"))
     if not code:
-        flash("Google authentication failed.", "danger")
+        flash("Google authentication failed. No code received.", "danger")
         return redirect(url_for("auth.login"))
 
     from app import Config
     import requests
+
+    if not Config.GOOGLE_CLIENT_ID or not Config.GOOGLE_CLIENT_SECRET:
+        flash("Google sign-in is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.", "warning")
+        return redirect(url_for("auth.login"))
 
     token_url = "https://oauth2.googleapis.com/token"
     data = {
@@ -104,17 +112,21 @@ def google_callback():
         "redirect_uri": url_for("auth.google_callback", _external=True),
         "grant_type": "authorization_code",
     }
-    resp = requests.post(token_url, data=data)
+    resp = requests.post(token_url, data=data, timeout=10)
     if resp.status_code != 200:
-        flash("Google authentication failed.", "danger")
+        flash("Google authentication failed. Invalid credentials.", "danger")
         return redirect(url_for("auth.login"))
 
     access_token = resp.json().get("access_token")
+    if not access_token:
+        flash("Google authentication failed. No access token received.", "danger")
+        return redirect(url_for("auth.login"))
+
     userinfo_url = "https://www.googleapis.com/oauth2/v2/userinfo"
     headers = {"Authorization": f"Bearer {access_token}"}
-    resp = requests.get(userinfo_url, headers=headers)
+    resp = requests.get(userinfo_url, headers=headers, timeout=10)
     if resp.status_code != 200:
-        flash("Google authentication failed.", "danger")
+        flash("Google authentication failed. Could not get user info.", "danger")
         return redirect(url_for("auth.login"))
 
     google_user = resp.json()

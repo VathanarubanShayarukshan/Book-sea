@@ -1,0 +1,68 @@
+book2audio நிறுவல் வழிகாட்டி
+==========================
+
+1. Termux-ல் நிறுவுதல்:
+   ----------------------
+   # தேவையான தொகுப்புகளை நிறுவு
+   pkg update && pkg upgrade
+   pkg install python git ffmpeg
+   
+   # Repository-ஐ clone செய்
+   git clone https://github.com/username/book2audio.git
+   cd book2audio
+   
+   # நிறுவு
+   chmod +x install.sh
+   ./install.sh
+
+2. Kali Linux/Ubuntu-ல் நிறுவுதல்:
+   ---------------------------------
+   # தேவையான தொகுப்புகளை நிறுவு
+   sudo apt update && sudo apt upgrade
+   sudo apt install python3 python3-pip git ffmpeg
+   
+   # Repository-ஐ clone செய்
+   git clone https://github.com/username/book2audio.git
+   cd book2audio
+   
+   # நிறுவு
+   chmod +x install.sh
+   sudo ./install.sh
+
+3. பயன்பாடு:
+   ---------
+   # உதவி மெனு
+   book2audio -h
+   
+   # மொழி பட்டியல்
+   book2audio -lh
+   
+   # புத்தகத்தை ஆடியோவாக மாற்று
+   book2audio -i book.txt -o audiobook.mp3
+   
+   # தமிழ் மொழியில் ஆடியோ
+   book2audio -i book.txt -o audiobook.mp3 -l ta
+   
+   # மொழியை தானாக கண்டறி
+   book2audio -i book.docx -o audiobook.mp3
+
+4. புதுப்பித்தல்:
+   -------------
+   book2audio -u https://github.com/username/book2audio
+
+5. நீக்குதல்:
+   ---------
+   book2audio -r
+
+ஆதரிக்கப்படும் கோப்பு வடிவங்கள்:
+- .txt (Plain Text)
+- .html, .htm (HTML)
+- .docx (Word)
+- .odt (OpenDocument)
+- .md, .markdown (Markdown)
+- .rtf (Rich Text Format)
+- .epub (E-book)
+- .fb2 (FictionBook)
+
+ஆதரிக்கப்படும் மொழிகள்: 60+ மொழிகள்
+(தமிழ், ஆங்கிலம், பிரெஞ்சு, ஜெர்மன், ஸ்பானிஷ், இந்தி, ஜப்பானிய மொழி மற்றும் பல)

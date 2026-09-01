@@ -2,48 +2,62 @@
 {% block title %}Manage Books - BookSea Admin{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3><i class="bi bi-book text-primary"></i> Manage Books</h3>
+    <div>
+        <h3 class="mb-1"><i class="bi bi-book text-primary"></i> Manage Books</h3>
+        <p class="text-muted mb-0">{{ books|length }} total books</p>
+    </div>
     <a href="{{ url_for('admin.panel') }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back</a>
 </div>
 
-<div class="table-responsive">
-    <table class="table table-hover">
-        <thead>
-            <tr>
-                <th>Hash ID</th>
-                <th>Title</th>
-                <th>Type</th>
-                <th>Uploader</th>
-                <th>Visibility</th>
-                <th>Pages</th>
-                <th>Audio</th>
-                <th>Date</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for book in books %}
-            <tr>
-                <td><code>{{ book.hash_id }}</code></td>
-                <td><a href="{{ url_for('main.view_book', hash_id=book.hash_id) }}" class="text-primary">{{ book.title }}</a></td>
-                <td><span class="badge bg-secondary">{{ book.file_type|upper }}</span></td>
-                <td>{{ book.uploader.username }}</td>
-                <td>
-                    <span class="badge bg-{% if book.visibility == 'public' %}success{% elif book.visibility == 'share' %}warning text-dark{% else %}secondary{% endif %}">
-                        {{ book.visibility }}
-                    </span>
-                </td>
-                <td>{{ book.page_count }}</td>
-                <td>{% if book.audio_filename %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-muted"></i>{% endif %}</td>
-                <td>{{ book.created_at.strftime('%Y-%m-%d') }}</td>
-                <td>
-                    <form method="POST" action="{{ url_for('main.delete_book', hash_id=book.hash_id) }}" class="d-inline" onsubmit="return confirm('Delete?');">
-                        <button type="submit" class="btn btn-outline-danger btn-sm py-0"><i class="bi bi-trash"></i></button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Hash ID</th>
+                        <th>Title</th>
+                        <th>Type</th>
+                        <th>Uploader</th>
+                        <th>Visibility</th>
+                        <th>Pages</th>
+                        <th>Audio</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for book in books %}
+                    <tr>
+                        <td><code class="text-muted">{{ book.hash_id }}</code></td>
+                        <td><a href="{{ url_for('main.view_book', hash_id=book.hash_id) }}" class="text-primary fw-semibold">{{ book.title }}</a></td>
+                        <td><span class="badge bg-{% if book.file_type == 'pdf' %}danger{% elif book.file_type in ('html','htm') %}info{% elif book.file_type == 'docx' %}primary{% else %}secondary{% endif %}">{{ book.file_type|upper }}</span></td>
+                        <td>{{ book.uploader.username }}</td>
+                        <td>
+                            <span class="badge bg-{% if book.visibility == 'public' %}success{% elif book.visibility == 'share' %}warning text-dark{% else %}secondary{% endif %}">
+                                <i class="bi bi-{% if book.visibility == 'public' %}globe{% elif book.visibility == 'share' %}link{% else %}lock{% endif %}"></i>
+                                {{ book.visibility }}
+                            </span>
+                        </td>
+                        <td>{{ book.page_count }}</td>
+                        <td>{% if book.audio_filename %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}<i class="bi bi-x-circle text-muted"></i>{% endif %}</td>
+                        <td><small class="text-muted">{{ book.created_at.strftime('%Y-%m-%d') }}</small></td>
+                        <td>
+                            <div class="d-flex gap-1">
+                                <a href="{{ url_for('main.view_book', hash_id=book.hash_id) }}" class="btn btn-outline-primary btn-sm py-0" title="View"><i class="bi bi-eye"></i></a>
+                                <form method="POST" action="{{ url_for('main.delete_book', hash_id=book.hash_id) }}" class="d-inline" onsubmit="return confirm('Delete {{ book.title }}?');">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm py-0" title="Delete"><i class="bi bi-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% if not books %}
+                    <tr><td colspan="9" class="text-center text-muted py-4">No books found</td></tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 {% endblock %}

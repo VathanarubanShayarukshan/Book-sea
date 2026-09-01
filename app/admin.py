@@ -141,7 +141,7 @@ def download_file(filepath):
 @admin_bp.route("/files/delete", methods=["POST"])
 @admin_required
 def delete_file():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     filepath = data.get("path", "")
     base = os.path.abspath(os.path.join(current_app.root_path, ".."))
     full = os.path.normpath(os.path.join(base, filepath))

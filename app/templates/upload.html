@@ -1,37 +1,229 @@
 {% extends "base.html" %}
 {% block title %}Upload Book - BookSea{% endblock %}
+{% block extra_css %}
+<style>
+    .upload-progress { display: none; }
+    .progress-container { border-radius: 12px; padding: 20px; background: #f0f9ff; border: 1px solid #bae6fd; }
+    .step-indicator { display: flex; justify-content: space-between; margin-bottom: 20px; }
+    .step { text-align: center; flex: 1; position: relative; }
+    .step-circle { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; background: #e2e8f0; color: #64748b; transition: all 0.3s; }
+    .step.active .step-circle { background: #2563eb; color: white; }
+    .step.done .step-circle { background: #22c55e; color: white; }
+    .step-label { font-size: 12px; color: #64748b; margin-top: 5px; }
+    .step.active .step-label { color: #2563eb; font-weight: 600; }
+    .file-input-wrapper { position: relative; border: 2px dashed #d1d5db; border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s; background: #fafbfc; }
+    .file-input-wrapper:hover { border-color: #2563eb; background: #eff6ff; }
+    .file-input-wrapper.dragover { border-color: #2563eb; background: #eff6ff; transform: scale(1.01); }
+    .file-input-wrapper input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .file-icon { font-size: 3rem; color: #94a3b8; }
+    .file-info { margin-top: 10px; font-weight: 600; color: #334155; }
+    .convert-status { margin-top: 15px; padding: 15px; border-radius: 8px; background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .convert-status.error { background: #fef2f2; border-color: #fecaca; }
+</style>
+{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-7">
         <div class="card shadow-sm">
             <div class="card-body p-4">
                 <h3 class="mb-4"><i class="bi bi-cloud-upload text-primary"></i> Upload Book</h3>
-                <form method="POST" enctype="multipart/form-data">
+
+                <!-- Step Indicators -->
+                <div class="step-indicator" id="step-indicator">
+                    <div class="step active" id="step-1">
+                        <div class="step-circle">1</div>
+                        <div class="step-label">Details</div>
+                    </div>
+                    <div class="step" id="step-2">
+                        <div class="step-circle">2</div>
+                        <div class="step-label">Upload</div>
+                    </div>
+                    <div class="step" id="step-3">
+                        <div class="step-circle">3</div>
+                        <div class="step-label">Audio</div>
+                    </div>
+                </div>
+
+                <form id="upload-form" method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label class="form-label">Book Title *</label>
+                        <label class="form-label fw-semibold">Book Title *</label>
                         <input type="text" class="form-control" name="title" required placeholder="Enter book title">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Description</label>
+                        <label class="form-label fw-semibold">Description</label>
                         <textarea class="form-control" name="description" rows="3" placeholder="Brief description of the book..."></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Book File *</label>
-                        <input type="file" class="form-control" name="book_file" accept=".pdf,.txt,.docx,.html,.htm,.xml" required>
-                        <div class="form-text">Max 100MB. Supported: PDF, TXT, DOCX, HTML, XML</div>
+                        <label class="form-label fw-semibold">Book File *</label>
+                        <div class="file-input-wrapper" id="file-drop-zone">
+                            <input type="file" name="book_file" accept=".pdf,.txt,.docx,.html,.htm,.xml" required id="file-input">
+                            <div class="file-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+                            <div class="file-info" id="file-name">Click or drag to select a file</div>
+                            <div class="text-muted small">PDF, TXT, DOCX, HTML, XML - Max 100MB</div>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Visibility</label>
+                        <label class="form-label fw-semibold">Visibility</label>
                         <select class="form-select" name="visibility">
                             <option value="public">Public - Everyone can see</option>
                             <option value="share">Share Link - Anyone with link can read</option>
                             <option value="private">Private - Only you can see</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100"><i class="bi bi-upload"></i> Upload Book</button>
+                    <button type="submit" class="btn btn-primary w-100 btn-lg" id="upload-btn">
+                        <i class="bi bi-upload"></i> Upload Book
+                    </button>
                 </form>
+
+                <!-- Upload Progress -->
+                <div class="upload-progress mt-4" id="upload-progress">
+                    <div class="progress-container">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="spinner-border text-primary me-3" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <div>
+                                <div class="fw-semibold" id="progress-status">Uploading file...</div>
+                                <small class="text-muted" id="progress-detail">Please wait</small>
+                            </div>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" id="progress-bar" style="width: 0%"></div>
+                        </div>
+                        <div class="text-center mt-2">
+                            <small class="text-muted" id="progress-percent">0%</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Convert Status -->
+                <div class="convert-status d-none" id="convert-status">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-check-circle-fill text-success me-2 fs-4"></i>
+                        <div>
+                            <div class="fw-semibold">Book uploaded successfully!</div>
+                            <small class="text-muted">Converting to audio in background...</small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const form = document.getElementById('upload-form');
+const fileInput = document.getElementById('file-input');
+const dropZone = document.getElementById('file-drop-zone');
+const fileName = document.getElementById('file-name');
+const uploadBtn = document.getElementById('upload-btn');
+const uploadProgress = document.getElementById('upload-progress');
+const progressBar = document.getElementById('progress-bar');
+const progressPercent = document.getElementById('progress-percent');
+const progressStatus = document.getElementById('progress-status');
+const progressDetail = document.getElementById('progress-detail');
+const stepIndicator = document.getElementById('step-indicator');
+const convertStatus = document.getElementById('convert-status');
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        fileName.innerHTML = `<i class="bi bi-file-earmark"></i> ${file.name} <span class="badge bg-secondary">${sizeMB} MB</span>`;
+        dropZone.style.borderColor = '#22c55e';
+        dropZone.style.background = '#f0fdf4';
+    }
+});
+
+dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    fileInput.files = e.dataTransfer.files;
+    fileInput.dispatchEvent(new Event('change'));
+});
+
+function setStep(num) {
+    document.querySelectorAll('.step').forEach((s, i) => {
+        s.classList.remove('active', 'done');
+        if (i + 1 < num) s.classList.add('done');
+        if (i + 1 === num) s.classList.add('active');
+    });
+}
+
+form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+
+    uploadBtn.disabled = true;
+    uploadBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Uploading...';
+    form.style.display = 'none';
+    uploadProgress.style.display = 'block';
+    setStep(2);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/upload', true);
+    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+    xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressPercent.textContent = pct + '%';
+            if (pct < 50) {
+                progressStatus.textContent = 'Uploading file...';
+                progressDetail.textContent = `${(e.loaded / (1024*1024)).toFixed(1)} MB / ${(e.total / (1024*1024)).toFixed(1)} MB`;
+            } else if (pct < 100) {
+                progressStatus.textContent = 'Almost there...';
+                progressDetail.textContent = `${(e.loaded / (1024*1024)).toFixed(1)} MB / ${(e.total / (1024*1024)).toFixed(1)} MB`;
+            } else {
+                progressStatus.textContent = 'Processing on server...';
+                progressDetail.textContent = 'Saving file and converting to audio';
+                progressBar.classList.remove('progress-bar-animated');
+            }
+        }
+    });
+
+    xhr.onload = function() {
+        try {
+            const data = JSON.parse(xhr.responseText);
+            if (xhr.status === 200 && data.status === 'ok') {
+                setStep(3);
+                progressStatus.textContent = 'Upload complete!';
+                progressDetail.textContent = 'Audio conversion running in background...';
+                progressBar.style.width = '100%';
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.classList.add('bg-success');
+                progressPercent.textContent = '100%';
+                convertStatus.classList.remove('d-none');
+
+                setTimeout(() => {
+                    window.location.href = data.redirect || '/';
+                }, 1500);
+            } else {
+                throw new Error(data.error || 'Upload failed');
+            }
+        } catch(err) {
+            uploadProgress.style.display = 'none';
+            form.style.display = 'block';
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '<i class="bi bi-upload"></i> Upload Book';
+            alert('Upload failed: ' + err.message);
+        }
+    };
+
+    xhr.onerror = function() {
+        uploadProgress.style.display = 'none';
+        form.style.display = 'block';
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = '<i class="bi bi-upload"></i> Upload Book';
+        alert('Network error. Please try again.');
+    };
+
+    xhr.send(formData);
+});
+</script>
 {% endblock %}

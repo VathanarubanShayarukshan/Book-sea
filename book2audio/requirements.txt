@@ -1,0 +1,7 @@
+gTTS
+langdetect
+beautifulsoup4
+python-docx
+markdown
+odfpy
+pydub
