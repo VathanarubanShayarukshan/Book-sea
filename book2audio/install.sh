@@ -86,6 +86,13 @@ check_python() {
         PIP=pip3
     fi
     
+    # Check if externally managed (PEP 668)
+    EXTERNALLY_MANAGED=""
+    if [ -f "/usr/lib/python3.13/EXTERNALLY-MANAGED" ] || [ -f "/usr/lib/python3.12/EXTERNALLY-MANAGED" ] || [ -f "/usr/lib/python3.11/EXTERNALLY-MANAGED" ]; then
+        EXTERNALLY_MANAGED="--break-system-packages"
+        echo -e "${YELLOW}[!] Python externally managed, using --break-system-packages${NC}"
+    fi
+    
     echo -e "${GREEN}[✓] Python பதிப்பு: $($PYTHON --version)${NC}"
 }
 
@@ -94,7 +101,7 @@ install_pip_packages() {
     echo -e "${BLUE}[*] Python தொகுப்புகளை நிறுவுகிறது...${NC}"
     
     # Upgrade pip first
-    $PYTHON -m pip install --upgrade pip --quiet 2>/dev/null || true
+    $PYTHON -m pip install --upgrade pip $EXTERNALLY_MANAGED --quiet 2>/dev/null || true
     
     # Required packages
     PACKAGES=(
@@ -105,11 +112,13 @@ install_pip_packages() {
         "markdown"
         "odfpy"
         "pydub"
+        "edge-tts"
+        "PyPDF2"
     )
     
     for package in "${PACKAGES[@]}"; do
         echo -ne "    நிறுவுகிறது: ${package}... "
-        $PYTHON -m pip install "$package" --quiet 2>/dev/null && \
+        $PYTHON -m pip install "$package" $EXTERNALLY_MANAGED --quiet 2>/dev/null && \
             echo -e "${GREEN}✓${NC}" || \
             echo -e "${YELLOW}⚠ மேம்படுத்தல் தேவை${NC}"
     done
@@ -159,18 +168,21 @@ copy_files() {
 create_symlink() {
     echo -e "${BLUE}[*] குறுக்குவழியை உருவாக்குகிறது...${NC}"
     
-    # Create wrapper script
-    cat > "$INSTALL_DIR/$SCRIPT_NAME" << 'EOF'
+    # Create wrapper script with proper Python path
+    cat > "$INSTALL_DIR/$SCRIPT_NAME" << EOF
 #!/bin/bash
 # book2audio wrapper script
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-exec python3 "$SCRIPT_DIR/book2audio.py" "$@"
+exec $PYTHON "$INSTALL_DIR/book2audio.py" "\$@"
 EOF
     chmod +x "$INSTALL_DIR/$SCRIPT_NAME"
     
     # Create symlink in PATH
     if [ "$ROOT_MODE" = true ]; then
         ln -sf "$INSTALL_DIR/$SCRIPT_NAME" "$BIN_DIR/$SCRIPT_NAME"
+        # Also create in /usr/bin if /usr/local/bin not in PATH
+        if ! echo "$PATH" | grep -q "/usr/local/bin"; then
+            ln -sf "$INSTALL_DIR/$SCRIPT_NAME" "/usr/bin/$SCRIPT_NAME"
+        fi
     else
         # For non-root users, add to user's local bin
         LOCAL_BIN="$HOME/.local/bin"
@@ -192,7 +204,7 @@ EOF
 test_installation() {
     echo -e "${BLUE}[*] நிறுவலை சோதிக்கிறது...${NC}"
     
-    if command -v book2audio &> /dev/null; then
+    if command -v book2audio &> //null; then
         echo -e "${GREEN}[✓] book2audio வெற்றிகரமாக நிறுவப்பட்டது!${NC}"
         echo ""
         echo -e "${CYAN}பயன்பாட்டு எடுத்துக்காட்டுகள்:${NC}"
@@ -203,7 +215,13 @@ test_installation() {
         echo -e "${GREEN}நிறுவல் முடிந்தது! 🎉${NC}"
     else
         echo -e "${YELLOW}[!] குறுக்குவழி கிடைக்கவில்லை, ஆனால் நிறுவல் முடிந்தது${NC}"
-        echo "    பயன்படுத்த: python3 $INSTALL_DIR/book2audio.py"
+        echo ""
+        echo -e "${CYAN}பயன்படுத்த:${NC}"
+        echo "    python3 $INSTALL_DIR/book2audio.py -h"
+        echo ""
+        echo -e "${CYAN}அல்லது PATH-இல் சேர்:${NC}"
+        echo "    export PATH=\"\$PATH:$INSTALL_DIR\""
+        echo "    book2audio -h"
     fi
 }
 

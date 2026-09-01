@@ -57,7 +57,16 @@ def check_deps():
     missing = [p for m, p in pkgs.items() if importlib.util.find_spec(m) is None]
     if missing:
         print(f"[*] Installing: {', '.join(missing)}")
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet"] + missing)
+        # Try with --break-system-packages for externally managed environments
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet"] + missing)
+        except subprocess.CalledProcessError:
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", "--quiet", "--break-system-packages"] + missing)
+            except subprocess.CalledProcessError:
+                print("[X] Failed to install packages")
+                print("    Try: pip install --break-system-packages edge-tts langdetect beautifulsoup4 python-docx PyPDF2")
+                sys.exit(1)
 
 def read_pdf(f):
     from PyPDF2 import PdfReader
